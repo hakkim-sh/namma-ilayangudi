@@ -1,8 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 
-const API_URL = 'http://localhost:5000/api/listings'
 const STORAGE_KEY = 'namma_ilayangudi_listings'
-const imagePlaceholder = 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=900&q=80'
+const API_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/listings`;
 
 const sampleListings = [
   { id: 1, title: 'Bright 2BHK near the main market', category: 'Property', subcategory: 'House Rent', price: 14000, priceType: 'Monthly', locality: 'Sivagangai Road, Ilayangudi', image: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=900&q=80', whatsappNumber: '919876543210', description: 'A bright, airy home with easy access to shops and schools.', postedAt: 'Sample listing' },
