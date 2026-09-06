@@ -10,7 +10,7 @@ const sampleListings = [
 ]
 
 const ListingsContext = createContext(null)
-const normalizeListing = (listing) => ({ ...listing, location: listing.locality || listing.location, phone: listing.whatsappNumber || listing.phone, whatsapp: listing.whatsappNumber || listing.whatsapp, image: listing.images?.[0] || listing.image || imagePlaceholder })
+const normalizeListing = (listing) => ({ ...listing, locality: listing.locality || listing.location, location: listing.locality || listing.location, phone: listing.phone || listing.whatsappNumber || listing.whatsapp, whatsapp: listing.whatsappNumber || listing.whatsapp || listing.phone, image: listing.images?.[0] || listing.image || imagePlaceholder })
 
 function readCache() {
   try {
@@ -36,7 +36,8 @@ export function ListingsProvider({ children }) {
   }, [])
 
   const addListing = async (listing) => {
-    const response = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: listing.title, category: listing.category, subcategory: listing.subcategory, price: listing.price, priceType: listing.priceType, locality: listing.locality || listing.location, whatsappNumber: listing.whatsappNumber || listing.whatsapp || listing.phone, description: listing.description, images: listing.images || [listing.image] }) })
+    const phone = listing.phone || listing.whatsappNumber || listing.whatsapp
+    const response = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: listing.title, category: listing.category, subcategory: listing.subcategory, price: listing.price, priceType: listing.priceType, locality: listing.locality || listing.location, phone, whatsappNumber: listing.whatsappNumber || listing.whatsapp || phone, description: listing.description, images: listing.images || [listing.image] }) })
     if (!response.ok) throw new Error('Unable to save listing')
     const payload = await response.json()
     const saved = normalizeListing(payload.data)
@@ -44,7 +45,32 @@ export function ListingsProvider({ children }) {
     return saved
   }
 
-  const value = useMemo(() => ({ listings, addListing, imagePlaceholder }), [listings])
+  const deleteListing = async (id, adminKey) => {
+    const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE', headers: { 'x-admin-key': adminKey } })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(payload.message || 'Unable to delete listing')
+    setListings((current) => {
+      const updated = current.filter((listing) => listing._id !== id && listing.id !== id)
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+      return updated
+    })
+    return payload
+  }
+
+  const updateListing = async (id, updatedData, adminKey) => {
+    const response = await fetch(`${API_URL}/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey }, body: JSON.stringify(updatedData) })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(payload.message || 'Unable to update listing')
+    const updatedListing = normalizeListing(payload.data)
+    setListings((current) => {
+      const updated = current.map((listing) => (listing._id === id || listing.id === id ? updatedListing : listing))
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+      return updated
+    })
+    return updatedListing
+  }
+
+  const value = useMemo(() => ({ listings, addListing, deleteListing, updateListing, imagePlaceholder }), [listings])
   return <ListingsContext.Provider value={value}>{children}</ListingsContext.Provider>
 }
 

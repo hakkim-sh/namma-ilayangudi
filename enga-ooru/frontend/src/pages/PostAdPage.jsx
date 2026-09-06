@@ -3,16 +3,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { useLanguage } from '../context/LanguageContext'
 import { useListings } from '../context/ListingsContext'
+import { categories, categorySubcategories, directContactCategories } from '../data/categories'
 
-const categorySubcategories = {
-  Property: ['House Rent', 'Land', 'Commercial Shops for Rent', 'Commercial Shops for Sale'],
-  Vehicles: ['Bikes', 'Cars', 'Commercial vehicles'],
-  'Auto & Travel': ['Local Auto Stand Booking', 'Taxi / Van Travel'],
-  Services: ['Mobile Repair', 'AC Service', 'TV Repair', 'Electrician', 'Plumber'],
-  'Buy & Sell': ['Electronics', 'Furniture', 'Home appliances', 'Used items'],
-}
-const categories = Object.keys(categorySubcategories)
-const initialForm = { title: '', category: 'Property', subcategory: 'House Rent', price: '', priceType: 'Fixed', location: '', whatsapp: '', description: '' }
+const initialForm = { title: '', category: 'Property', subcategory: 'Land', price: '', priceType: 'Fixed', locality: '', phone: '', description: '' }
 
 function PostAdPage() {
   const navigate = useNavigate()
@@ -21,6 +14,7 @@ function PostAdPage() {
   const [form, setForm] = useState(initialForm)
   const [images, setImages] = useState([])
   const [error, setError] = useState('')
+  const isDirectBooking = directContactCategories.includes(form.category)
 
   const update = (event) => {
     const { name, value } = event.target
@@ -58,13 +52,12 @@ function PostAdPage() {
 
   const submit = async (event) => {
     event.preventDefault()
-    const whatsapp = form.whatsapp.replace(/\D/g, '')
-    if (!/^\d{10}$/.test(whatsapp)) return setError(t('errors.number'))
+    const phone = form.phone.replace(/\D/g, '')
+    if (!/^\d{10}$/.test(phone)) return setError(t('errors.number'))
     if (!images.length) return setError(t('errors.requiredPhoto'))
-    const isDirectBooking = ['Auto & Travel', 'Services'].includes(form.category)
     const price = isDirectBooking ? 'Price on Discussion' : form.price ? Number(form.price) : form.priceType
     try {
-      await addListing({ ...form, id: Date.now(), whatsapp, phone: whatsapp, images, image: images[0], price, priceType: isDirectBooking ? 'Discussion' : form.priceType, postedAt: 'Just now' })
+      await addListing({ ...form, id: Date.now(), phone, whatsappNumber: phone, images, image: images[0], price, priceType: isDirectBooking ? 'Discussion' : form.priceType, postedAt: 'Just now' })
     } catch {
       setError(t('errors.save'))
       return
@@ -83,14 +76,14 @@ function PostAdPage() {
           <label className="grid gap-2 text-xs font-bold text-slate-600 sm:col-span-2">{t('adTitle')}<input required name="title" value={form.title} onChange={update} placeholder={t('whatOffering')} className="rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none focus:border-emerald-500" /></label>
           <label className="grid gap-2 text-xs font-bold text-slate-600">{t('category')}<select name="category" value={form.category} onChange={update} className="rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal outline-none">{categories.map((category) => <option key={category} value={category}>{categoryLabel(category)}</option>)}</select></label>
           <label className="grid gap-2 text-xs font-bold text-slate-600">{t('subcategory')}<select required name="subcategory" value={form.subcategory} onChange={update} className="rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal outline-none">{categorySubcategories[form.category].map((subcategory) => <option key={subcategory} value={subcategory}>{subcategoryLabel(subcategory)}</option>)}</select></label>
-          <label className="grid gap-2 text-xs font-bold text-slate-600">{t('price')}<input type="number" min="0" name="price" value={form.price} onChange={update} disabled={['Auto & Travel', 'Services'].includes(form.category)} placeholder={t('optional')} className="rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none disabled:bg-slate-100" /></label>
+          <label className="grid gap-2 text-xs font-bold text-slate-600">{t('price')}<input type="number" min="0" name="price" value={form.price} onChange={update} disabled={isDirectBooking} placeholder={t('optional')} className="rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none disabled:bg-slate-100" /></label>
           <label className="grid gap-2 text-xs font-bold text-slate-600">{t('priceType')}<select name="priceType" value={form.priceType} onChange={update} className="rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal outline-none">{['Fixed', 'Negotiable', 'Monthly'].map((priceType) => <option key={priceType} value={priceType}>{priceTypeLabel(priceType)}</option>)}</select></label>
-          <label className="grid gap-2 text-xs font-bold text-slate-600 sm:col-span-2">{t('locality')}<input required name="location" value={form.location} onChange={update} placeholder={t('area')} className="rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none focus:border-emerald-500" /></label>
-          <label className="grid gap-2 text-xs font-bold text-slate-600 sm:col-span-2">{t('whatsapp')}<input required type="tel" name="whatsapp" value={form.whatsapp} onChange={update} inputMode="numeric" maxLength="10" placeholder={t('tenDigit')} className="rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none focus:border-emerald-500" /></label>
+          <label className="grid gap-2 text-xs font-bold text-slate-600 sm:col-span-2">{t('locality')}<input required name="locality" value={form.locality} onChange={update} placeholder={t('area')} className="rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none focus:border-emerald-500" /></label>
+          <label className="grid gap-2 text-xs font-bold text-slate-600 sm:col-span-2">{t('phone')}<input required type="tel" name="phone" value={form.phone} onChange={update} inputMode="numeric" maxLength="10" placeholder={t('tenDigit')} className="rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none focus:border-emerald-500" /></label>
           <label className="grid gap-2 text-xs font-bold text-slate-600 sm:col-span-2">{t('photos')} <span className="font-normal text-slate-500">{t('selectPhotos')}<input required type="file" multiple accept="image/*" onChange={handleImages} className="mt-2 w-full rounded-xl border border-dashed border-slate-300 p-3 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:font-bold" /></span></label>
           {images.length > 0 && <div className="grid grid-cols-3 gap-3 sm:col-span-2 sm:grid-cols-5">{images.map((image, index) => <div key={`${image.slice(0, 20)}-${index}`} className="relative"><img src={image} alt={`${t('uploadPreview')} ${index + 1}`} className="h-24 w-full rounded-xl object-cover" /><button type="button" onClick={() => setImages((current) => current.filter((_, imageIndex) => imageIndex !== index))} className="absolute right-1 top-1 rounded-full bg-slate-900/80 px-2 py-1 text-xs font-bold text-white" aria-label={`${t('removeImage')} ${index + 1}`}>×</button></div>)}</div>}
           <label className="grid gap-2 text-xs font-bold text-slate-600 sm:col-span-2">{t('description')}<textarea required name="description" value={form.description} onChange={update} rows="5" placeholder={t('tellNeighbours')} className="resize-y rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none focus:border-emerald-500" /></label>
-          {['Auto & Travel', 'Services'].includes(form.category) && <p className="text-sm text-emerald-700 sm:col-span-2">{t('discussionBooking')}</p>}
+          {isDirectBooking && <p className="text-sm text-emerald-700 sm:col-span-2">{t('discussionBooking')}</p>}
           {error && <p className="text-sm text-red-600 sm:col-span-2">{error}</p>}
           <button type="submit" className="rounded-xl bg-emerald-600 py-4 font-bold text-white transition hover:bg-emerald-700 sm:col-span-2">{t('submitListing')}</button>
         </form>

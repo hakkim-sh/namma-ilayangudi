@@ -1,9 +1,10 @@
 const mongoose = require('mongoose');
 const Listing = require('../models/Listing');
 
-const verifyAdminPin = (req, res) => {
-  if (req.headers['x-admin-pin'] !== '1234') {
-    res.status(403).json({ success: false, message: 'Invalid admin PIN' });
+const verifyAdminKey = (req, res) => {
+  const adminKey = process.env.ADMIN_SECRET_KEY;
+  if (!adminKey || req.headers['x-admin-key'] !== adminKey) {
+    res.status(401).json({ success: false, message: 'Unauthorized' });
     return false;
   }
   return true;
@@ -13,14 +14,15 @@ const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const getApprovedListings = async (req, res, next) => {
   try {
-    const { category, locality, location, keyword } = req.query;
+    const { category, subcategory, locality, location, keyword } = req.query;
     const filter = {};
 
     if (category) filter.category = category;
+    if (subcategory) filter.subcategory = subcategory;
     if (locality || location) filter.locality = { $regex: escapeRegex(locality || location), $options: 'i' };
     if (keyword) {
       const search = { $regex: escapeRegex(keyword), $options: 'i' };
-      filter.$or = [{ title: search }, { description: search }];
+      filter.$or = [{ title: search }, { locality: search }, { category: search }, { subcategory: search }];
     }
 
     const listings = await Listing.find(filter).sort({ createdAt: -1 });
@@ -94,7 +96,7 @@ const approveListing = async (req, res, next) => {
 
 const deleteListing = async (req, res, next) => {
   try {
-    if (!verifyAdminPin(req, res)) return;
+    if (!verifyAdminKey(req, res)) return;
     if (!mongoose.isValidObjectId(req.params.id)) {
       return res.status(400).json({ success: false, message: 'Invalid listing id' });
     }
@@ -112,7 +114,7 @@ const deleteListing = async (req, res, next) => {
 
 const updateListing = async (req, res, next) => {
   try {
-    if (!verifyAdminPin(req, res)) return;
+    if (!verifyAdminKey(req, res)) return;
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid listing id' });
     const listing = await Listing.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!listing) return res.status(404).json({ success: false, message: 'Listing not found' });

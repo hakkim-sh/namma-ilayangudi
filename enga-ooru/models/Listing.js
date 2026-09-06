@@ -7,6 +7,7 @@ const listingSchema = new mongoose.Schema({
   price: { type: mongoose.Schema.Types.Mixed },
   priceType: { type: String, trim: true },
   locality: { type: String, required: [true, 'Locality is required'], trim: true },
+  phone: { type: String, trim: true },
   whatsappNumber: { type: String, required: [true, 'WhatsApp number is required'], trim: true },
   description: { type: String, required: [true, 'Description is required'], trim: true },
   images: { type: [String], default: [] },
