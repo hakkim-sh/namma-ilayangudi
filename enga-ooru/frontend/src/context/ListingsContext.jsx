@@ -1,5 +1,4 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { useAuth } from './AuthContext'
 
 const STORAGE_KEY = 'namma_ilayangudi_listings'
 const API_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/listings`
@@ -23,7 +22,6 @@ function readCache() {
 }
 
 export function ListingsProvider({ children }) {
-  const { authHeaders } = useAuth()
   const [listings, setListings] = useState(readCache)
 
   useEffect(() => {
@@ -39,16 +37,16 @@ export function ListingsProvider({ children }) {
 
   const addListing = useCallback(async (listing) => {
     const phone = listing.phone || listing.whatsappNumber || listing.whatsapp
-      const response = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify({ title: listing.title, category: listing.category, subcategory: listing.subcategory, price: listing.price, priceType: listing.priceType, locality: listing.locality || listing.location, location: listing.location, phone, whatsappNumber: listing.whatsappNumber || listing.whatsapp || phone, description: listing.description, images: listing.images || [listing.image], from: listing.from, to: listing.to, departureTime: listing.departureTime, busType: listing.busType, routeVia: listing.routeVia, ownerEmail: listing.ownerEmail }) })
+      const response = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: listing.title, category: listing.category, subcategory: listing.subcategory, price: listing.price, priceType: listing.priceType, locality: listing.locality || listing.location, location: listing.location, phone, whatsappNumber: listing.whatsappNumber || listing.whatsapp || phone, description: listing.description, images: listing.images || [listing.image], from: listing.from, to: listing.to, departureTime: listing.departureTime, busType: listing.busType, routeVia: listing.routeVia, ownerEmail: listing.ownerEmail, userId: listing.userId, pin: listing.pin }) })
     if (!response.ok) throw new Error('Unable to save listing')
     const payload = await response.json()
     const saved = normalizeListing(payload.data)
     setListings((current) => { const updated = [saved, ...current]; window.localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); return updated })
     return saved
-  }, [authHeaders])
+  }, [])
 
-  const deleteListing = useCallback(async (id) => {
-    const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE', headers: authHeaders() })
+  const deleteListing = useCallback(async (id, managementKey) => {
+    const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: managementKey, adminKey: managementKey }) })
     const payload = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(payload.message || 'Unable to delete listing')
     setListings((current) => {
@@ -57,10 +55,10 @@ export function ListingsProvider({ children }) {
       return updated
     })
     return payload
-  }, [authHeaders])
+  }, [])
 
-  const updateListing = useCallback(async (id, updatedData) => {
-    const response = await fetch(`${API_URL}/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(updatedData) })
+  const updateListing = useCallback(async (id, updatedData, managementKey) => {
+    const response = await fetch(`${API_URL}/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...updatedData, pin: managementKey, adminKey: managementKey }) })
     const payload = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(payload.message || 'Unable to update listing')
     const updatedListing = normalizeListing(payload.data)
@@ -70,7 +68,7 @@ export function ListingsProvider({ children }) {
       return updated
     })
     return updatedListing
-  }, [authHeaders])
+  }, [])
 
   const value = useMemo(() => ({ listings, addListing, deleteListing, updateListing, imagePlaceholder }), [listings, addListing, deleteListing, updateListing])
   return <ListingsContext.Provider value={value}>{children}</ListingsContext.Provider>

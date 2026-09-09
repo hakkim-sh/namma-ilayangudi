@@ -3,17 +3,14 @@ import { Link, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { useLanguage } from '../context/LanguageContext'
 import { useListings } from '../context/ListingsContext'
-import { useAuth } from '../context/AuthContext'
-import AuthModal from '../components/AuthModal'
 import { categories, categorySubcategories, directContactCategories } from '../data/categories'
 
-const initialForm = { title: '', category: 'Property', customCategory: '', subcategory: 'Land', customSubcategory: '', price: '', priceType: 'Fixed', locality: '', location: '', phone: '', description: '', from: 'Ilayangudi', to: '', departureTime: '', busType: 'Government', routeVia: '' }
+const initialForm = { title: '', category: 'Property', customCategory: '', subcategory: 'Land', customSubcategory: '', price: '', priceType: 'Fixed', locality: '', location: '', phone: '', description: '', from: 'Ilayangudi', to: '', departureTime: '', busType: 'Government', routeVia: '', pin: '' }
 
 function PostAdPage() {
   const navigate = useNavigate()
   const { t, categoryLabel, subcategoryLabel, priceTypeLabel } = useLanguage()
   const { addListing } = useListings()
-  const { user } = useAuth()
   const [form, setForm] = useState(initialForm)
   const [images, setImages] = useState([])
   const [optimizedSizes, setOptimizedSizes] = useState([])
@@ -23,8 +20,6 @@ function PostAdPage() {
   const [error, setError] = useState('')
   const isDirectBooking = directContactCategories.includes(form.category)
   const isBusTimings = form.category === 'Bus Timings'
-
-  if (!user) return <><Navbar /><AuthModal onClose={() => navigate('/')} onSuccess={() => {}} /></>
 
   const update = (event) => {
     const { name, value } = event.target
@@ -125,6 +120,7 @@ function PostAdPage() {
     if (!isBusTimings && !images.length) return setError(t('errors.requiredPhoto'))
     if (isBusTimings && (!form.title.trim() || !form.departureTime.trim() || !form.busType.trim())) return setError('Please complete the bus timing details.')
     if (!categoryValue || !subcategoryValue) return setError('Please enter your custom category and subcategory.')
+    if (!/^\d{4}$/.test(form.pin)) return setError('Please set a 4-digit PIN to manage this ad later.')
     const price = isBusTimings || !form.price || form.priceType === 'Other' ? 'Price on Discussion' : Number(form.price)
     const busDescription = isBusTimings ? `${form.title}: ${form.departureTime}` : form.description
     try {
@@ -151,6 +147,7 @@ function PostAdPage() {
           {!isBusTimings && <><label className="grid gap-2 text-xs font-bold text-slate-600 sm:col-span-2">{t('locality')}<input required name="locality" value={form.locality} onChange={update} placeholder={t('area')} className="rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none focus:border-emerald-500" /></label><label className="grid gap-2 text-xs font-bold text-slate-600 sm:col-span-2">Location / இடம் (Optional)<input name="location" value={form.location} onChange={update} placeholder="Location / இடம் (Optional)" className="rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none focus:border-emerald-500" /></label></>}
           {isBusTimings && <div className="grid gap-5 sm:col-span-2 sm:grid-cols-2"><label className="grid gap-2 text-xs font-bold text-slate-600 sm:col-span-2">Route / Bus Name<input required name="title" value={form.title} onChange={update} placeholder="Ilayangudi to Madurai" className="rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none focus:border-emerald-500" /></label><label className="grid gap-2 text-xs font-bold text-slate-600">Departure Time / Frequency<input required name="departureTime" value={form.departureTime} onChange={update} placeholder="Every 30 mins, 6:00 AM - 9:00 PM" className="rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none focus:border-emerald-500" /></label><label className="grid gap-2 text-xs font-bold text-slate-600">Bus Type<select required name="busType" value={form.busType} onChange={update} className="rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal outline-none"><option>Government</option><option>Private</option></select></label></div>}
           <label className="grid gap-2 text-xs font-bold text-slate-600 sm:col-span-2">{t('phone')}<input required type="tel" name="phone" value={form.phone} onChange={update} inputMode="numeric" maxLength="10" placeholder={t('tenDigit')} className="rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none focus:border-emerald-500" /></label>
+          <label className="grid gap-2 text-xs font-bold text-slate-600 sm:col-span-2">Set a 4-Digit PIN (to edit or delete this ad later)<input required type="tel" name="pin" value={form.pin} onChange={update} maxLength="4" pattern="[0-9]*" inputMode="numeric" placeholder="e.g. 5892" className="rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none focus:border-emerald-500" /></label>
           {!isBusTimings && <label className="grid gap-2 text-xs font-bold text-slate-600 sm:col-span-2">{t('photos')} <span className="font-normal text-slate-500">{t('selectPhotos')}<input required type="file" multiple accept="image/*" onChange={handleImages} className="mt-2 w-full rounded-xl border border-dashed border-slate-300 p-3 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:font-bold" /></span></label>}
           {images.length > 0 && <div className="grid grid-cols-3 gap-3 sm:col-span-2 sm:grid-cols-5">{images.map((image, index) => <div key={`${image.slice(0, 20)}-${index}`} className="relative"><img src={image} alt={`${t('uploadPreview')} ${index + 1}`} className="h-24 w-full rounded-xl object-cover" /><span className="absolute bottom-1 left-1 rounded-md bg-emerald-600 px-1.5 py-1 text-[10px] font-bold text-white">Optimized for fast loading (~{optimizedSizes[index]} KB)</span><button type="button" onClick={() => { setImages((current) => current.filter((_, imageIndex) => imageIndex !== index)); setOptimizedSizes((current) => current.filter((_, imageIndex) => imageIndex !== index)) }} className="absolute right-1 top-1 rounded-full bg-slate-900/80 px-2 py-1 text-xs font-bold text-white" aria-label={`${t('removeImage')} ${index + 1}`}>×</button></div>)}</div>}
           <label className="grid gap-2 text-xs font-bold text-slate-600 sm:col-span-2">{t('description')}<textarea required name="description" value={form.description} onChange={update} rows="5" placeholder={t('tellNeighbours')} className="resize-y rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none focus:border-emerald-500" /></label>

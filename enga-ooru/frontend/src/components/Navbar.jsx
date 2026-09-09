@@ -1,14 +1,9 @@
-import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import AuthModal from './AuthModal'
-import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 
 function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { user, logout } = useAuth()
-  const [showAuth, setShowAuth] = useState(false)
   const { t, toggleLanguage, isTamil } = useLanguage()
 
   return (
@@ -23,10 +18,9 @@ function Navbar() {
             📍<select className="cursor-pointer border-0 bg-transparent font-semibold text-slate-900 outline-none" defaultValue="Ilayangudi" aria-label={t('town')}><option>Ilayangudi</option></select>
           </label>
           <button type="button" onClick={toggleLanguage} className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition hover:border-emerald-500" aria-label="தமிழ் | ENG">{isTamil ? 'ENG | தமிழ்' : 'தமிழ் | ENG'}</button>
-          {user ? <><button type="button" onClick={logout} className="text-xs font-bold text-slate-500 hover:text-slate-900">Logout</button>{location.pathname !== '/post-ad' && <button type="button" onClick={() => navigate('/post-ad')} className="rounded-xl bg-emerald-600 px-4 py-2.5 font-bold text-white shadow-sm transition hover:bg-emerald-700">{t('post')}</button>}</> : <button type="button" onClick={() => setShowAuth(true)} className="rounded-xl bg-emerald-600 px-4 py-2.5 font-bold text-white shadow-sm transition hover:bg-emerald-700">{t('post')}</button>}
+          {location.pathname !== '/post-ad' && <button type="button" onClick={() => navigate('/post-ad')} className="rounded-xl bg-emerald-600 px-4 py-2.5 font-bold text-white shadow-sm transition hover:bg-emerald-700">{t('post')}</button>}
         </div>
       </div>
-      {showAuth && <AuthModal onClose={() => setShowAuth(false)} onSuccess={() => { setShowAuth(false); navigate('/post-ad') }} />}
     </header>
   )
 }

@@ -19,6 +19,7 @@ const listingSchema = new mongoose.Schema({
   images: { type: [String], default: [] },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
   ownerEmail: { type: String, lowercase: true, trim: true, index: true },
+  pin: { type: String, required: true, match: [/^\d{4}$/, 'PIN must contain exactly 4 digits'] },
   createdAt: { type: Date, default: Date.now },
 });
 

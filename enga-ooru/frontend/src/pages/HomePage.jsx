@@ -6,13 +6,11 @@ import ListingGrid from '../components/ListingGrid'
 import Navbar from '../components/Navbar'
 import { useLanguage } from '../context/LanguageContext'
 import { useListings } from '../context/ListingsContext'
-import { useAuth } from '../context/AuthContext'
 import { categories, categorySubcategories } from '../data/categories'
 
 function HomePage() {
   const { listings, loading, error, imagePlaceholder, deleteListing, updateListing } = useListings()
   const { t, categoryLabel } = useLanguage()
-  const { user } = useAuth()
   const [query, setQuery] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [activeCategory, setActiveCategory] = useState('All')
@@ -28,23 +26,23 @@ function HomePage() {
     setActiveSubcategory('All')
   }
 
-  const handleDelete = async (listing) => {
+  const handleDelete = async (listing, managementKey) => {
     try {
-      await deleteListing(listing._id || listing.id)
-      if (selectedListing?._id === listing._id) setSelectedListing(null)
+      await deleteListing(listing._id || listing.id, managementKey)
+      setSelectedListing(null)
       window.alert('Listing deleted successfully.')
     } catch (deleteError) {
       window.alert(deleteError.message)
     }
   }
 
-  const handleEdit = (listing) => {
-    setEditingListing({ listing })
+  const handleEdit = (listing, managementKey) => {
+    setEditingListing({ listing, managementKey })
   }
 
   const saveEdit = async (updatedData) => {
     try {
-      const updatedListing = await updateListing(editingListing.listing._id || editingListing.listing.id, updatedData)
+      const updatedListing = await updateListing(editingListing.listing._id || editingListing.listing.id, updatedData, editingListing.managementKey)
       setEditingListing(null)
       if (selectedListing?._id === updatedListing._id) setSelectedListing(updatedListing)
       window.alert('Listing updated successfully.')
@@ -62,7 +60,6 @@ function HomePage() {
       return matchesCategory && matchesSubcategory && (!normalizedQuery || searchableText.includes(normalizedQuery))
     })
   }, [activeCategory, activeSubcategory, listings, searchTerm])
-  const canManage = (listing) => Boolean(user && (user.role === 'admin' || user.email?.toLowerCase() === listing.ownerEmail?.toLowerCase()))
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900">
@@ -98,7 +95,7 @@ function HomePage() {
           <div className="mt-8"><ListingGrid listings={filteredListings} loading={loading} error={error} onSelect={setSelectedListing} /></div>
         </section>
       </main>
-      {selectedListing && <ListingDetailModal listing={selectedListing} imagePlaceholder={imagePlaceholder} canManage={canManage(selectedListing)} onEdit={handleEdit} onDelete={handleDelete} onClose={() => setSelectedListing(null)} />}
+      {selectedListing && <ListingDetailModal listing={selectedListing} imagePlaceholder={imagePlaceholder} onEdit={handleEdit} onDelete={handleDelete} onClose={() => setSelectedListing(null)} />}
       {editingListing && <ListingEditModal listing={editingListing.listing} onClose={() => setEditingListing(null)} onSave={saveEdit} />}
     </div>
   )
