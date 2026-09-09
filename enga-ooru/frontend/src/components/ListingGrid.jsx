@@ -2,7 +2,7 @@ import { LoaderCircle, SearchX } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
 import ListingCard from './ListingCard'
 
-function ListingGrid({ listings, loading, error, onSelect, onEdit, onDelete }) {
+function ListingGrid({ listings, loading, error, onSelect }) {
   const { t } = useLanguage()
 
   if (loading) {
@@ -17,7 +17,7 @@ function ListingGrid({ listings, loading, error, onSelect, onEdit, onDelete }) {
     return <div className="state-message"><SearchX size={30} /><p>{t('noListings')}</p></div>
   }
 
-  return <div className="listing-grid">{listings.map((listing) => <ListingCard key={listing._id || listing.id} listing={listing} onSelect={onSelect} onEdit={onEdit} onDelete={onDelete} />)}</div>
+  return <div className="listing-grid">{listings.map((listing) => <ListingCard key={listing._id || listing.id} listing={listing} onSelect={onSelect} />)}</div>
 }
 
 export default ListingGrid

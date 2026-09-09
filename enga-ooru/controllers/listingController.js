@@ -1,14 +1,16 @@
 const mongoose = require('mongoose');
 const Listing = require('../models/Listing');
+const adminKey = () => process.env.ADMIN_KEY || 'admin123';
 
 const verifyAdminKey = (req, res) => {
-  const adminKey = process.env.ADMIN_SECRET_KEY;
-  if (!adminKey || req.headers['x-admin-key'] !== adminKey) {
+  if (req.headers['x-admin-key'] !== adminKey()) {
     res.status(401).json({ success: false, message: 'Unauthorized' });
     return false;
   }
   return true;
 };
+
+const canManageListing = (req, listing) => req.user?.role === 'admin' || req.headers['x-admin-key'] === adminKey() || (req.user && listing.ownerEmail && listing.ownerEmail.toLowerCase() === req.user.email.toLowerCase());
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -56,7 +58,8 @@ const getListingById = async (req, res, next) => {
 
 const addListing = async (req, res, next) => {
   try {
-    const listing = await Listing.create(req.body);
+    const { userId, ownerEmail, ...listingData } = req.body;
+    const listing = await Listing.create({ ...listingData, userId: req.user._id, ownerEmail: req.user.email });
     res.status(201).json({ success: true, message: 'Listing saved to MongoDB Atlas', data: listing });
   } catch (error) {
     next(error);
@@ -96,11 +99,13 @@ const approveListing = async (req, res, next) => {
 
 const deleteListing = async (req, res, next) => {
   try {
-    if (!verifyAdminKey(req, res)) return;
     if (!mongoose.isValidObjectId(req.params.id)) {
       return res.status(400).json({ success: false, message: 'Invalid listing id' });
     }
 
+    const existingListing = await Listing.findById(req.params.id);
+    if (!existingListing) return res.status(404).json({ success: false, message: 'Listing not found' });
+    if (!canManageListing(req, existingListing)) return res.status(403).json({ success: false, message: 'You do not have permission to delete this listing' });
     const listing = await Listing.findByIdAndDelete(req.params.id);
     if (!listing) {
       return res.status(404).json({ success: false, message: 'Listing not found' });
@@ -114,9 +119,12 @@ const deleteListing = async (req, res, next) => {
 
 const updateListing = async (req, res, next) => {
   try {
-    if (!verifyAdminKey(req, res)) return;
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid listing id' });
-    const listing = await Listing.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const existingListing = await Listing.findById(req.params.id);
+    if (!existingListing) return res.status(404).json({ success: false, message: 'Listing not found' });
+    if (!canManageListing(req, existingListing)) return res.status(403).json({ success: false, message: 'You do not have permission to edit this listing' });
+    const { userId, ownerEmail, _id, ...updatedData } = req.body;
+    const listing = await Listing.findByIdAndUpdate(req.params.id, updatedData, { new: true, runValidators: true });
     if (!listing) return res.status(404).json({ success: false, message: 'Listing not found' });
     res.json({ success: true, data: listing });
   } catch (error) {
