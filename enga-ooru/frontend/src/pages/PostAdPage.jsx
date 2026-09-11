@@ -134,12 +134,12 @@ function PostAdPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900">
+    <div className="min-h-screen bg-[#11183c] text-white">
       <Navbar />
-      <main className="mx-auto max-w-3xl px-5 py-8 sm:px-8 sm:py-12">
-        <Link to="/" className="mb-8 inline-block text-sm font-bold text-emerald-600 hover:underline">{t('backHome')}</Link>
-        <div className="mb-8"><p className="mb-2 text-xs font-bold uppercase tracking-[0.15em] text-emerald-600">Namma Ilayangudi</p><h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{t('postAdTitle')}</h1><p className="mt-3 text-sm leading-6 text-slate-500">{t('marketplaceDescription')}</p></div>
-        <form onSubmit={submit} className="grid gap-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-2 sm:p-8">
+      <main className="mx-auto my-10 max-w-xl px-5 sm:px-8">
+        <Link to="/" className="mb-8 inline-block text-sm font-bold text-indigo-200 hover:text-white hover:underline">{t('backHome')}</Link>
+        <div className="mb-8"><p className="mb-2 text-xs font-bold uppercase tracking-[0.15em] text-indigo-200">Namma Ilayangudi</p><h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">{t('postAdTitle')}</h1><p className="mt-3 text-sm leading-6 text-indigo-200">{t('marketplaceDescription')}</p></div>
+        <form onSubmit={submit} className="grid gap-5 rounded-[28px] border border-blue-50/80 bg-white p-8 text-slate-900 shadow-2xl shadow-black/30 sm:grid-cols-2">
           {!isBusTimings && <label className="grid gap-2 text-xs font-bold text-slate-600 sm:col-span-2">{t('adTitle')}<input required name="title" value={form.title} onChange={update} placeholder={t('whatOffering')} className="rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none focus:border-emerald-500" /></label>}
           <label className="grid gap-2 text-xs font-bold text-slate-600">{t('category')}<select name="category" value={form.category} onChange={update} className="rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal outline-none">{[...categories, 'Other'].map((category) => <option key={category} value={category}>{category === 'Other' ? 'Other' : categoryLabel(category)}</option>)}</select>{form.category === 'Other' && <input required name="customCategory" value={form.customCategory} onChange={update} placeholder="Type your category" className="rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none focus:border-emerald-500" />}</label>
           <label className="grid gap-2 text-xs font-bold text-slate-600">{t('subcategory')}<select required name="subcategory" value={form.subcategory} onChange={update} className="rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal outline-none">{[...(categorySubcategories[form.category] || []), 'Other'].map((subcategory) => <option key={subcategory} value={subcategory}>{subcategory === 'Other' ? 'Other' : subcategoryLabel(subcategory)}</option>)}</select>{form.subcategory === 'Other' && <input required name="customSubcategory" value={form.customSubcategory} onChange={update} placeholder="Type your subcategory" className="rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none focus:border-emerald-500" />}</label>
@@ -153,11 +153,11 @@ function PostAdPage() {
           <label className="grid gap-2 text-xs font-bold text-slate-600 sm:col-span-2">{t('description')}<textarea required name="description" value={form.description} onChange={update} rows="5" placeholder={t('tellNeighbours')} className="resize-y rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none focus:border-emerald-500" /></label>
           {isDirectBooking && <p className="text-sm text-emerald-700 sm:col-span-2">{t('discussionBooking')}</p>}
           {error && <p className="text-sm text-red-600 sm:col-span-2">{error}</p>}
-          <button type="submit" className="rounded-xl bg-emerald-600 py-4 font-bold text-white transition hover:bg-emerald-700 sm:col-span-2">{t('submitListing')}</button>
+          <button type="submit" className="rounded-xl bg-[#4c63f7] py-3.5 font-bold text-white shadow-lg shadow-indigo-500/30 transition hover:bg-[#3b51e6] sm:col-span-2">{t('submitListing')} →</button>
         </form>
       </main>
       {cropSource && <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/70 p-5" role="dialog" aria-modal="true" aria-labelledby="crop-title">
-        <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
+        <div className="w-full max-w-md rounded-[28px] bg-white p-5 shadow-2xl shadow-black/30">
           <div className="mb-4 flex items-start justify-between gap-4"><div><h2 id="crop-title" className="text-lg font-bold text-slate-900">Crop image {cropIndex + 1} of {cropQueue.length}</h2><p className="mt-1 text-sm text-slate-500">Center the important part inside the square frame.</p></div><button type="button" onClick={cancelCrop} className="text-2xl leading-none text-slate-400 hover:text-slate-700" aria-label="Cancel crop">×</button></div>
           <div className="relative aspect-square overflow-hidden rounded-xl bg-slate-100"><img src={cropSource} alt="Crop preview" className="h-full w-full object-cover" /><div className="pointer-events-none absolute inset-0 border-2 border-white/90 shadow-[0_0_0_9999px_rgba(15,23,42,0.38)]" /></div>
           <div className="mt-5 flex justify-end gap-3"><button type="button" onClick={cancelCrop} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50">Cancel</button><button type="button" onClick={confirmCrop} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700">Confirm Crop</button></div>

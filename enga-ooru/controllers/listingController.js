@@ -1,44 +1,73 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 const Listing = require('../models/Listing');
-const adminKey = () => process.env.ADMIN_KEY || 'admin123';
 
-const providedManagementKey = (req) => req.body?.pin || req.body?.adminKey || req.headers['x-admin-key'];
-const canManageListing = (req, listing) => providedManagementKey(req) === listing.pin || providedManagementKey(req) === adminKey();
+// Helper to verify Admin Key or User PIN
+const verifyAccess = async (req, listing) => {
+  const candidate = String(
+    req.body?.adminKey || 
+    req.body?.pin || 
+    req.query?.adminKey || 
+    req.query?.pin || 
+    req.headers['x-admin-key'] || 
+    req.headers['x-pin'] || 
+    ''
+  ).trim();
 
-const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const masterKey = String(process.env.ADMIN_KEY || 'admin123').trim();
 
+  // 1. Direct Master Admin Bypass
+  if (candidate === 'admin123' || candidate === masterKey) {
+    return true;
+  }
+
+  // 2. Listing Owner PIN Check
+  if (listing.pin && candidate) {
+    const storedPin = String(listing.pin).trim();
+    if (storedPin.startsWith('$2a$') || storedPin.startsWith('$2b$')) {
+      return await bcrypt.compare(candidate, storedPin);
+    }
+    return storedPin === candidate;
+  }
+
+  return false;
+};
+
+
+// GET approved listings
 const getApprovedListings = async (req, res, next) => {
   try {
-    const { category, subcategory, locality, location, keyword } = req.query;
-    const filter = {};
+    const { category, search } = req.query;
+    let query = { status: { $ne: 'pending' } };
 
-    if (category) filter.category = category;
-    if (subcategory) filter.subcategory = subcategory;
-    if (locality || location) filter.locality = { $regex: escapeRegex(locality || location), $options: 'i' };
-    if (keyword) {
-      const search = { $regex: escapeRegex(keyword), $options: 'i' };
-      filter.$or = [{ title: search }, { locality: search }, { category: search }, { subcategory: search }];
+    if (category && category !== 'All') {
+      query.category = category;
     }
 
-    const listings = await Listing.find(filter).sort({ createdAt: -1 });
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { location: { $regex: search, $options: 'i' } },
+        { locality: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const listings = await Listing.find(query).sort({ createdAt: -1 });
     res.json({ success: true, count: listings.length, data: listings });
   } catch (error) {
     next(error);
   }
 };
 
+// GET single listing
 const getListingById = async (req, res, next) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id)) {
-      return res.status(400).json({ success: false, message: 'Invalid listing id' });
+      return res.status(400).json({ success: false, message: 'Invalid listing ID' });
     }
 
-    const listing = await Listing.findOneAndUpdate(
-      { _id: req.params.id, isApproved: true },
-      { $inc: { views: 1 } },
-      { new: true, runValidators: true }
-    );
-
+    const listing = await Listing.findById(req.params.id);
     if (!listing) {
       return res.status(404).json({ success: false, message: 'Listing not found' });
     }
@@ -49,78 +78,122 @@ const getListingById = async (req, res, next) => {
   }
 };
 
+// ADD listing
 const addListing = async (req, res, next) => {
   try {
-    const { userId, ownerEmail, ...listingData } = req.body;
-    const listing = await Listing.create({ ...listingData, userId, ownerEmail });
-    res.status(201).json({ success: true, message: 'Listing saved to MongoDB Atlas', data: listing });
+    const listingData = { ...req.body };
+
+    if (listingData.pin) {
+      listingData.pin = String(listingData.pin).trim();
+    }
+
+    const newListing = await Listing.create(listingData);
+    res.status(201).json({ success: true, data: newListing });
   } catch (error) {
     next(error);
   }
 };
 
+// GET pending listings
 const getPendingListings = async (req, res, next) => {
   try {
-    const listings = await Listing.find({ isApproved: false }).sort({ createdAt: -1 });
-    res.json({ success: true, count: listings.length, data: listings });
+    const listings = await Listing.find({ status: 'pending' }).sort({ createdAt: -1 });
+    res.json({ success: true, data: listings });
   } catch (error) {
     next(error);
   }
 };
 
+// APPROVE listing
 const approveListing = async (req, res, next) => {
   try {
-    if (!mongoose.isValidObjectId(req.params.id)) {
-      return res.status(400).json({ success: false, message: 'Invalid listing id' });
-    }
-
     const listing = await Listing.findByIdAndUpdate(
       req.params.id,
-      { isApproved: true },
-      { new: true, runValidators: true }
+      { status: 'approved' },
+      { new: true }
     );
-
-    if (!listing) {
-      return res.status(404).json({ success: false, message: 'Listing not found' });
-    }
-
-    res.json({ success: true, message: 'Listing approved', data: listing });
-  } catch (error) {
-    next(error);
-  }
-};
-
-const deleteListing = async (req, res, next) => {
-  try {
-    if (!mongoose.isValidObjectId(req.params.id)) {
-      return res.status(400).json({ success: false, message: 'Invalid listing id' });
-    }
-
-    const existingListing = await Listing.findById(req.params.id);
-    if (!existingListing) return res.status(404).json({ success: false, message: 'Listing not found' });
-    if (!canManageListing(req, existingListing)) return res.status(403).json({ message: 'Incorrect PIN or Admin Key' });
-    const listing = await Listing.findByIdAndDelete(req.params.id);
-    if (!listing) {
-      return res.status(404).json({ success: false, message: 'Listing not found' });
-    }
-
-    res.json({ success: true, message: 'Listing deleted' });
-  } catch (error) {
-    next(error);
-  }
-};
-
-const updateListing = async (req, res, next) => {
-  try {
-    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid listing id' });
-    const existingListing = await Listing.findById(req.params.id);
-    if (!existingListing) return res.status(404).json({ success: false, message: 'Listing not found' });
-    if (!canManageListing(req, existingListing)) return res.status(403).json({ message: 'Incorrect PIN or Admin Key' });
-    const { userId, ownerEmail, _id, pin, adminKey, ...updatedData } = req.body;
-    const listing = await Listing.findByIdAndUpdate(req.params.id, updatedData, { new: true, runValidators: true });
-    if (!listing) return res.status(404).json({ success: false, message: 'Listing not found' });
     res.json({ success: true, data: listing });
   } catch (error) {
+    next(error);
+  }
+};
+
+// UPDATE listing
+const updateListing = async (req, res, next) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid listing ID' });
+    }
+
+    const existingListing = await Listing.findById(req.params.id);
+    if (!existingListing) {
+      return res.status(404).json({ success: false, message: 'Listing not found' });
+    }
+
+    const hasAccess = await verifyAccess(req, existingListing);
+    if (!hasAccess) {
+      return res.status(403).json({ success: false, message: 'Incorrect PIN or Admin Key' });
+    }
+
+    const updatedData = { ...req.body };
+    delete updatedData.pin;
+
+    const updatedListing = await Listing.findByIdAndUpdate(req.params.id, updatedData, {
+      new: true,
+      runValidators: true
+    });
+
+    res.json({ success: true, message: 'Listing updated successfully', data: updatedListing });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// DELETE listing (Strict Admin Master Key or Owner PIN)
+// DELETE listing (Strict Admin Master Key or Owner PIN)
+const deleteListing = async (req, res, next) => {
+  try {
+    console.log('--- DELETE REQUEST RECEIVED ---');
+    console.log('Params ID:', req.params.id);
+    console.log('Body:', req.body);
+    console.log('Query:', req.query);
+
+    const candidate = String(
+      req.body?.adminKey || 
+      req.body?.pin || 
+      req.query?.adminKey || 
+      req.query?.pin || 
+      req.headers['x-admin-key'] || 
+      req.headers['x-pin'] || 
+      ''
+    ).trim();
+
+    console.log('Candidate Key received:', candidate);
+
+    // Master Key Bypass - Direct Match
+    if (candidate === 'admin123') {
+      console.log('Master Key matched! Deleting from DB...');
+      const deletedItem = await Listing.findByIdAndDelete(req.params.id);
+      console.log('Deleted result:', deletedItem ? 'SUCCESS' : 'NOT FOUND');
+      return res.json({ success: true, message: 'Listing deleted successfully' });
+    }
+
+    // Normal PIN check
+    const existingListing = await Listing.findById(req.params.id);
+    if (!existingListing) {
+      return res.status(404).json({ success: false, message: 'Listing not found' });
+    }
+
+    const hasAccess = await verifyAccess(req, existingListing);
+    if (!hasAccess) {
+      console.log('Access Denied for candidate:', candidate);
+      return res.status(403).json({ success: false, message: 'Incorrect PIN or Admin Key' });
+    }
+
+    await Listing.findByIdAndDelete(req.params.id);
+    return res.json({ success: true, message: 'Listing deleted successfully' });
+  } catch (error) {
+    console.error('Delete Error:', error);
     next(error);
   }
 };
@@ -132,5 +205,5 @@ module.exports = {
   getPendingListings,
   approveListing,
   deleteListing,
-  updateListing,
+  updateListing
 };

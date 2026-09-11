@@ -17,7 +17,7 @@ function ListingGrid({ listings, loading, error, onSelect }) {
     return <div className="state-message"><SearchX size={30} /><p>{t('noListings')}</p></div>
   }
 
-  return <div className="listing-grid">{listings.map((listing) => <ListingCard key={listing._id || listing.id} listing={listing} onSelect={onSelect} />)}</div>
+  return <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 md:grid-cols-2 lg:grid-cols-3">{listings.map((listing) => <ListingCard key={listing._id || listing.id} listing={listing} onSelect={onSelect} />)}</div>
 }
 
 export default ListingGrid
