@@ -3,16 +3,108 @@ import { useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, MapPin, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
 
-const CATEGORY_MAP = {
-  Property: ['Land', 'Shop', 'House', 'Vehicles', 'Other'],
-  Emergency: ['Hospital / Clinic', 'Ambulance', 'Blood Donor', 'Police / Fire', 'Other'],
-  Transport: ['Auto Stand', 'Taxi / Cabs', 'Mini Truck / Load Auto', 'Bus Timings', 'Other'],
-  Taxi: ['Van/Car', 'Auto', 'Travels/Bus', 'Other'],
-  Services: ['Electrician', 'Plumber', 'Carpenter', 'Painter', 'AC / Fridge Repair', 'Tailor', 'Other'],
-  Rent: ['House Rent', 'Shop Rent', 'Bachelor Room', 'Commercial Space', 'Other'],
-  'Food & Dining': ['Restaurant', 'Tea & Snacks', 'Home Food / Mess', 'Bakery', 'Other'],
-  'Bus Timings': ['Local Town Bus', 'Mofussil / Express', 'Other'],
-  Other: ['General',]
+const CATEGORY_DEFINITIONS = {
+  Shops: {
+    en: 'Shops & Business',
+    ta: 'கடைகள் & வணிகம்',
+    subcategories: [
+      { key: 'Grocery', en: 'Grocery / Provision Store', ta: 'மளிகைக் கடை' },
+      { key: 'Stationery & Fancy', en: 'Stationery, Books & Fancy', ta: 'புத்தக, பேனா & பேன்சி கடை' },
+      { key: 'Hardware & Paint', en: 'Hardware, Electrical & Paint', ta: 'பெயிண்ட் & ஹார்டுவேர் கடை' },
+      { key: 'Flower Shop', en: 'Flower Shop', ta: 'பூக்கடை' },
+      { key: 'Furniture & Home', en: 'Furniture, Bed & Cupboard', ta: 'பர்னிச்சர், பீரோ & கட்டில் கடை' },
+      { key: 'Medical & Pharmacy', en: 'Medical & Pharmacy', ta: 'மருந்தகம் (மெடிக்கல்)' },
+      { key: 'Textiles & Clothing', en: 'Textiles & Clothing Store', ta: 'துணிக்கடை' },
+      { key: 'Mobile & Electronics', en: 'Mobile & Electronics Shop', ta: 'மொபைல் & எலக்ட்ரானிக்ஸ் கடை' },
+      { key: 'Meat Stall / Fresh Meat', en: 'Meat & Fish Stall', ta: 'கறி & மீன் கடை' },
+      { key: 'Vegetables & Fruits', en: 'Vegetables & Fruits', ta: 'காய்கறி & பழக்கடை' },
+      { key: 'Footwear', en: 'Footwear Shop', ta: 'காலணி கடை' },
+      { key: 'Other', en: 'Other Shop', ta: 'இதர கடைகள்' }
+    ]
+  },
+  Property: {
+    en: 'Property & Real Estate',
+    ta: 'நிலம் & வீடுகள்',
+    subcategories: [
+      { key: 'Land', en: 'Land / Plot', ta: 'நிலம் / பிளாட்' },
+      { key: 'Shop', en: 'Commercial Shop', ta: 'வணிகக் கடை' },
+      { key: 'House', en: 'House / Villa', ta: 'வீடு' },
+      { key: 'Vehicles', en: 'Vehicles', ta: 'வாகனங்கள்' },
+      { key: 'Other', en: 'Other', ta: 'மற்றவை' }
+    ]
+  },
+  Emergency: {
+    en: 'Emergency & Health',
+    ta: 'அவசர தேவைகள் & மருத்துவம்',
+    subcategories: [
+      { key: 'Ambulance', en: 'Ambulance Service', ta: 'ஆம்புலன்ஸ்' },
+      { key: 'Hospital', en: 'Hospital & Clinic', ta: 'மருத்துவமனை / கிளினிக்' },
+      { key: 'Blood Donor', en: 'Blood Donor', ta: 'இரத்த தானம்' },
+      { key: 'Other', en: 'Other', ta: 'மற்றவை' }
+    ]
+  },
+  Transport: {
+    en: 'Transport & Logistics',
+    ta: 'சரக்கு போக்குவரத்து',
+    subcategories: [
+      { key: 'Mini Truck / Tata Ace', en: 'Mini Truck / Tata Ace', ta: 'டாடா ஏஸ் / மினி லாரி' },
+      { key: 'Heavy Goods Vehicle', en: 'Heavy Goods Vehicle / Lorry', ta: 'லாரி / கனரக வாகனம்' },
+      { key: 'General Transport / Load Auto', en: 'Load Auto / General Transport', ta: 'லோடு ஆட்டோ' },
+      { key: 'Other', en: 'Other', ta: 'மற்றவை' }
+    ]
+  },
+  Taxi: {
+    en: 'Taxi & Travels',
+    ta: 'வாடகை வண்டிகள் & டாக்ஸி',
+    subcategories: [
+      { key: 'Auto', en: 'Auto Rickshaw', ta: 'ஆட்டோ' },
+      { key: 'Car Taxi', en: 'Car Taxi / Cab', ta: 'கார் டாக்ஸி' },
+      { key: 'Travels / Van', en: 'Tour Travels / Van', ta: 'டிராவல்ஸ் / வேன்' },
+      { key: 'Other', en: 'Other', ta: 'மற்றவை' }
+    ]
+  },
+  Services: {
+    en: 'Local Services',
+    ta: 'உள்ளூர் சேவைகள்',
+    subcategories: [
+      { key: 'AC Service', en: 'AC Service & Repair', ta: 'ஏசி சர்வீஸ்' },
+      { key: 'Mobile Service', en: 'Mobile Service', ta: 'மொபைல் பழுது பார்த்தல்' },
+      { key: 'TV Repair', en: 'TV Repair', ta: 'டிவி பழுது பார்த்தல்' },
+      { key: 'Washing Machine', en: 'Washing Machine Service', ta: 'வாஷிங் மெஷின் சர்வீஸ்' },
+      { key: 'Electrician', en: 'Electrician', ta: 'எலக்ட்ரீஷியன்' },
+      { key: 'Plumber', en: 'Plumber', ta: 'பிளம்பர்' },
+      { key: 'Education & Tuition', en: 'Education & Tuition', ta: 'டியூஷன் & கல்வி' },
+      { key: 'Daily Labour & Shifting', en: 'House Shifting & Daily Labour', ta: 'ஷிப்டிங் & தினசரி ஆட்கள்' },
+      { key: 'Other', en: 'Other', ta: 'மற்றவை' }
+    ]
+  },
+  Rent: {
+    en: 'House & Shop Rent',
+    ta: 'வாடகைக்கு',
+    subcategories: [
+      { key: 'Shop Rent', en: 'Shop for Rent', ta: 'கடை வாடகைக்கு' },
+      { key: 'House Rent', en: 'House for Rent', ta: 'வீடு வாடகைக்கு' },
+      { key: 'Things / Equipment Rent', en: 'Equipment & Things for Rent', ta: 'பொருட்கள் வாடகைக்கு' },
+      { key: 'Other', en: 'Other', ta: 'மற்றவை' }
+    ]
+  },
+  'Food & Dining': {
+    en: 'Food & Dining',
+    ta: 'உணவு & சிற்றுண்டி',
+    subcategories: [
+      { key: 'Home Baker', en: 'Home Food & Cake Baker', ta: 'ஹோம் பேக்கர் / வீட்டு உணவு' },
+      { key: 'Hotel & Restaurant', en: 'Hotel & Restaurant', ta: 'ஹோட்டல் & உணவகம்' },
+      { key: 'Meat Stall / Fresh Meat', en: 'Fresh Meat Stall', ta: 'கறிக்கடை' },
+      { key: 'Other', en: 'Other', ta: 'மற்றவை' }
+    ]
+  },
+  'Bus Timings': {
+    en: 'Bus Timings',
+    ta: 'பேருந்து நேரம்',
+    subcategories: [
+      { key: 'Bus Schedule', en: 'Bus Schedule & Route', ta: 'பேருந்து அட்டவணை' }
+    ]
+  }
 }
 
 function PostAdPage() {
@@ -21,9 +113,9 @@ function PostAdPage() {
 
   const [formData, setFormData] = useState({
     title: '',
-    category: 'Property',
+    category: 'Shops',
     customCategory: '',
-    subcategory: 'Land',
+    subcategory: 'Grocery',
     customSubcategory: '',
     price: '',
     priceType: 'Fixed',
@@ -45,16 +137,15 @@ function PostAdPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
 
-  // Live GPS Handlers
   const handleGetLiveLocation = () => {
     if (!navigator.geolocation) {
-      alert('Browser does not support GPS location.')
+      alert(isTamil ? 'உங்கள் உலாவியில் GPS வசதி இல்லை.' : 'Browser does not support GPS location.')
       return
     }
 
     setIsLocating(true)
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
+      (position) => {
         const { latitude, longitude } = position.coords
         setFormData((prev) => ({
           ...prev,
@@ -64,9 +155,9 @@ function PostAdPage() {
         setIsLocating(false)
         setLocationSuccess(true)
       },
-      (err) => {
+      () => {
         setIsLocating(false)
-        alert('Location access denied. Street name-ai manual-aa enter pannikkalam.')
+        alert(isTamil ? 'இருப்பிட அணுகல் மறுக்கப்பட்டது. முகவரியை நேரடியாக எழுதவும்.' : 'Location access denied. Please enter address manually.')
       },
       { enableHighAccuracy: true, timeout: 10000 }
     )
@@ -79,12 +170,12 @@ function PostAdPage() {
 
   const handleCategoryChange = (e) => {
     const nextCat = e.target.value
-    const subOptions = CATEGORY_MAP[nextCat] || ['Other']
+    const subList = CATEGORY_DEFINITIONS[nextCat]?.subcategories || []
     setFormData((prev) => ({
       ...prev,
       category: nextCat,
       customCategory: '',
-      subcategory: subOptions[0],
+      subcategory: subList[0]?.key || 'Other',
       customSubcategory: ''
     }))
   }
@@ -103,7 +194,6 @@ function PostAdPage() {
     e.preventDefault()
     setError('')
 
-    // Basic Validation
     if (!formData.title.trim()) {
       return setError(isTamil ? 'தலைப்பை உள்ளிடவும்' : 'Please enter an ad title')
     }
@@ -119,12 +209,12 @@ function PostAdPage() {
 
     setLoading(true)
 
-    const resolvedCategory = formData.category === 'Other' && formData.customCategory.trim() 
-      ? formData.customCategory.trim() 
+    const resolvedCategory = formData.category === 'Other' && formData.customCategory.trim()
+      ? formData.customCategory.trim()
       : formData.category
 
-    const resolvedSubcategory = formData.subcategory === 'Other' && formData.customSubcategory.trim() 
-      ? formData.customSubcategory.trim() 
+    const resolvedSubcategory = formData.subcategory === 'Other' && formData.customSubcategory.trim()
+      ? formData.customSubcategory.trim()
       : formData.subcategory
 
     const finalWhatsapp = sameAsPhone ? formData.phone : (formData.whatsappNumber || formData.phone)
@@ -159,17 +249,20 @@ function PostAdPage() {
         setSuccess(true)
         setTimeout(() => {
           navigate('/')
-        }, 2500)
+        }, 2200)
       } else {
-        setError(result.message || 'Failed to submit listing. Please try again.')
+        setError(result.message || (isTamil ? 'விளம்பரம் பதிவேற்ற முடியவில்லை. மீண்டும் முயற்சிக்கவும்.' : 'Failed to submit listing.'))
       }
     } catch (err) {
       console.error(err)
-      setError('Network error. Check backend connection.')
+      setError(isTamil ? 'இணைப்பு பிழை. சர்வர் இயங்குகிறதா என சரிபார்க்கவும்.' : 'Network error. Check backend connection.')
     } finally {
       setLoading(false)
     }
   }
+
+  const currentCategoryObj = CATEGORY_DEFINITIONS[formData.category]
+  const currentSubcategories = currentCategoryObj?.subcategories || [{ key: 'Other', en: 'Other', ta: 'மற்றவை' }]
 
   return (
     <div className="min-h-screen bg-[#11183c] px-4 py-8 text-white sm:px-6">
@@ -185,12 +278,12 @@ function PostAdPage() {
         </Link>
 
         <div className="mt-5 mb-8">
-          <span className="text-xs font-bold uppercase tracking-wider text-indigo-300">NAMMA ILAYANGUDI</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-indigo-300">NAMMA OORU</span>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-white sm:text-3xl">
             {isTamil ? 'புதிய விளம்பரம் பதிவிட' : 'Post New Ad'}
           </h1>
           <p className="mt-1 text-sm text-indigo-200/70">
-            {isTamil ? 'உள்ளூர் சந்தை மற்றும் அத்தியாவசிய சேவைகள்' : 'Local Marketplace & Essential Services'}
+            {isTamil ? 'உள்ளூர் கடைகள், சேவைகள் மற்றும் அத்தியாவசிய தகவல்கள்' : 'Local Marketplace & Essential Services'}
           </p>
         </div>
 
@@ -219,12 +312,12 @@ function PostAdPage() {
           {/* Ad Title */}
           <div>
             <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
-              {isTamil ? 'விளம்பர தலைப்பு (Title) *' : 'Ad Title *'}
+              {isTamil ? 'விளம்பரம் / கடையின் பெயர் *' : 'Ad Title / Shop Name *'}
             </label>
             <input
               type="text"
               required
-              placeholder={isTamil ? 'நீங்கள் என்ன வழங்குகிறீர்கள்?' : 'What are you offering?'}
+              placeholder={isTamil ? 'எ.கா: ரோஜா மலர் அங்காடி / ராஜா எலக்ட்ரிக்கல்ஸ்' : 'e.g. Star Provision & Fancy Store'}
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               className="mt-1.5 w-full rounded-2xl border border-slate-200 px-4 py-3.5 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
@@ -241,22 +334,12 @@ function PostAdPage() {
               onChange={handleCategoryChange}
               className="mt-1.5 w-full rounded-2xl border border-slate-200 px-4 py-3.5 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
             >
-              {Object.keys(CATEGORY_MAP).map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+              {Object.keys(CATEGORY_DEFINITIONS).map((catKey) => (
+                <option key={catKey} value={catKey}>
+                  {isTamil ? CATEGORY_DEFINITIONS[catKey].ta : CATEGORY_DEFINITIONS[catKey].en}
+                </option>
               ))}
             </select>
-
-            {/* Custom Category Input if 'Other' selected */}
-            {formData.category === 'Other' && (
-              <input
-                type="text"
-                required
-                placeholder={isTamil ? 'உங்கள் பிரிவைக் குறிப்பிடவும் (e.g. Books, Furniture)' : 'Specify custom category'}
-                value={formData.customCategory}
-                onChange={(e) => setFormData({ ...formData, customCategory: e.target.value })}
-                className="mt-2.5 w-full rounded-2xl border border-indigo-300 bg-indigo-50/50 px-4 py-3 text-sm text-slate-900 outline-none"
-              />
-            )}
           </div>
 
           {/* Subcategory */}
@@ -269,17 +352,19 @@ function PostAdPage() {
               onChange={(e) => setFormData({ ...formData, subcategory: e.target.value, customSubcategory: '' })}
               className="mt-1.5 w-full rounded-2xl border border-slate-200 px-4 py-3.5 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
             >
-              {(CATEGORY_MAP[formData.category] || ['Other']).map((sub) => (
-                <option key={sub} value={sub}>{sub}</option>
+              {currentSubcategories.map((sub) => (
+                <option key={sub.key} value={sub.key}>
+                  {isTamil ? sub.ta : sub.en}
+                </option>
               ))}
             </select>
 
-            {/* Custom Subcategory Input */}
+            {/* Custom Subcategory Input if Other is chosen */}
             {formData.subcategory === 'Other' && (
               <input
                 type="text"
                 required
-                placeholder={isTamil ? 'உட்பிரிவைக் குறிப்பிடவும்' : 'Specify custom subcategory'}
+                placeholder={isTamil ? 'உங்கள் கடையின் அல்லது சேவையின் வகையை உள்ளிடவும்' : 'Specify custom subcategory'}
                 value={formData.customSubcategory}
                 onChange={(e) => setFormData({ ...formData, customSubcategory: e.target.value })}
                 className="mt-2.5 w-full rounded-2xl border border-indigo-300 bg-indigo-50/50 px-4 py-3 text-sm text-slate-900 outline-none"
@@ -313,7 +398,7 @@ function PostAdPage() {
                 <option value="Fixed">{isTamil ? 'நிலையான விலை (Fixed)' : 'Fixed'}</option>
                 <option value="Negotiable">{isTamil ? 'பேசித் தீர்மானிக்கலாம் (Negotiable)' : 'Negotiable'}</option>
                 <option value="Monthly">{isTamil ? 'மாதாந்திர வாடகை (Monthly)' : 'Monthly'}</option>
-                <option value="Other / Contact for Price">{isTamil ? 'தொடர்புக்கு / நேரடி முன்பதிவு' : 'Other / Contact for Price'}</option>
+                <option value="Other / Contact for Price">{isTamil ? 'நேரடித் தொடர்பு / விலை தெரிந்து கொள்ள' : 'Contact for Price'}</option>
               </select>
             </div>
           </div>
@@ -321,12 +406,12 @@ function PostAdPage() {
           {/* Locality / Street */}
           <div>
             <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
-              {isTamil ? 'இளையான்குடி பகுதி / தெரு பெயர் *' : 'Ilayangudi Locality / Street name *'}
+              {isTamil ? 'பகுதி அல்லது தெரு பெயர் *' : 'Locality / Street name *'}
             </label>
             <input
               type="text"
               required
-              placeholder={isTamil ? 'பகுதி அல்லது தெரு பெயர்' : 'Area or street name'}
+              placeholder={isTamil ? 'எ.கா: காமராஜர் ரோடு, பஸ் நிலையம் அருகில்' : 'Area or street name'}
               value={formData.locality}
               onChange={(e) => setFormData({ ...formData, locality: e.target.value })}
               className="mt-1.5 w-full rounded-2xl border border-slate-200 px-4 py-3.5 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
@@ -336,17 +421,17 @@ function PostAdPage() {
           {/* Location & Optional Live GPS */}
           <div>
             <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
-              {isTamil ? 'இடம் / அடையாளம் (Optional)' : 'Location / Landmark (Optional)'}
+              {isTamil ? 'அடையாளம் / முழு முகவரி (Optional)' : 'Location / Landmark (Optional)'}
             </label>
             <input
               type="text"
-              placeholder="e.g. Near Bus Stand, Kamarajar Road"
+              placeholder={isTamil ? 'எ.கா: பெரிய பள்ளிவாசல் எதிரில்' : 'e.g. Opposite to Main Post Office'}
               value={formData.location}
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
               className="mt-1.5 w-full rounded-2xl border border-slate-200 px-4 py-3.5 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
             />
 
-            {/* Live GPS Toggle */}
+            {/* Live GPS Button */}
             <div className="mt-2.5 flex items-center justify-between">
               <button
                 type="button"
@@ -363,7 +448,7 @@ function PostAdPage() {
                   ? (isTamil ? 'இருப்பிடம் பெறப்படுகிறது...' : 'Fetching GPS...')
                   : locationSuccess
                   ? (isTamil ? 'நேரலை இருப்பிடம் இணைக்கப்பட்டது ✓' : 'Live GPS Attached ✓')
-                  : (isTamil ? 'தற்போதைய இருப்பிடத்தை இணைக்க (Live GPS)' : 'Attach Live GPS Location (Optional)')}
+                  : (isTamil ? 'கடை / வீட்டின் GPS இருப்பிடத்தை இணைக்க' : 'Attach Live GPS Location (Optional)')}
               </button>
 
               {locationSuccess && (
@@ -387,14 +472,13 @@ function PostAdPage() {
               <input
                 type="tel"
                 required
-                placeholder="10 digit number"
+                placeholder="10 digit mobile number"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="mt-1.5 w-full rounded-2xl border border-slate-200 px-4 py-3.5 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
               />
             </div>
 
-            {/* WhatsApp Match Option */}
             <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600">
               <input
                 type="checkbox"
@@ -419,7 +503,7 @@ function PostAdPage() {
           {/* 4-Digit Secret PIN */}
           <div>
             <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
-              {isTamil ? '4 இலக்க ரகசிய PIN (மாற்ற அல்லது நீக்க) *' : 'Set a 4-Digit PIN (to edit or delete this ad later) *'}
+              {isTamil ? '4 இலக்க ரகசிய PIN (மாற்ற அல்லது நீக்க) *' : 'Set a 4-Digit PIN (to edit or delete later) *'}
             </label>
             <input
               type="password"
@@ -454,7 +538,7 @@ function PostAdPage() {
             <textarea
               required
               rows={4}
-              placeholder={isTamil ? 'உங்கள் அண்டை வீட்டாரிடம் இன்னும் கொஞ்சம் சொல்லுங்கள்...' : 'Tell your neighbours a little more...'}
+              placeholder={isTamil ? 'கடை திறக்கும் நேரம், கிடைக்கும் பொருட்கள் அல்லது சேவைகள் பற்றிய விவரம்...' : 'Details about timings, available products or services...'}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="mt-1.5 w-full rounded-2xl border border-slate-200 px-4 py-3.5 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"

@@ -10,17 +10,19 @@ import { categories, categorySubcategories } from '../data/categories'
 
 function HomePage() {
   const { listings, loading, error, imagePlaceholder, updateListing } = useListings()
-  const { t, categoryLabel } = useLanguage()
+  const { t, categoryLabel, subcategoryLabel } = useLanguage()
   const [query, setQuery] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [activeCategory, setActiveCategory] = useState('All')
   const [activeSubcategory, setActiveSubcategory] = useState('All')
   const [selectedListing, setSelectedListing] = useState(null)
   const [editingListing, setEditingListing] = useState(null)
+
   const submitSearch = (event) => {
     event?.preventDefault()
     setSearchTerm(query)
   }
+
   const selectCategory = (category) => {
     setActiveCategory(category)
     setActiveSubcategory('All')
@@ -76,17 +78,67 @@ function HomePage() {
             </div>
             <SlidersHorizontal className="hidden text-indigo-200 sm:block" size={22} aria-hidden="true" />
           </div>
-          <div className="mt-6 flex gap-2 overflow-x-auto pb-2" role="list" aria-label={t('category')}>
-            {['All', ...categories].map((category) => <button key={category} type="button" onClick={() => selectCategory(category)} className={`shrink-0 rounded-full border px-5 py-2 text-sm font-medium transition-all ${activeCategory === category ? 'border-transparent bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20' : 'border-blue-100/30 bg-white/10 text-indigo-100 backdrop-blur-sm hover:border-blue-300 hover:text-white'}`}>{category === 'All' ? t('all') : categoryLabel(category)}</button>)}
+
+          {/* Categories Pill Bar - Scrollbar Hidden */}
+          <div className="mt-6 flex gap-2 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="list" aria-label={t('category')}>
+            {['All', ...categories].map((category) => (
+              <button 
+                key={category} 
+                type="button" 
+                onClick={() => selectCategory(category)} 
+                className={`shrink-0 rounded-full border px-5 py-2 text-sm font-medium transition-all ${
+                  activeCategory === category 
+                    ? 'border-transparent bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20' 
+                    : 'border-blue-100/30 bg-white/10 text-indigo-100 backdrop-blur-sm hover:border-blue-300 hover:text-white'
+                }`}
+              >
+                {category === 'All' ? t('all') : categoryLabel(category)}
+              </button>
+            ))}
           </div>
-          {activeCategory !== 'All' && <div className="mt-3 flex gap-2 overflow-x-auto pb-2" role="list" aria-label={`${categoryLabel(activeCategory)} ${t('subcategory')}`}>
-            {['All', ...categorySubcategories[activeCategory]].map((subcategory) => <button key={subcategory} type="button" onClick={() => setActiveSubcategory(subcategory)} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-all ${activeSubcategory === subcategory ? 'border-transparent bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20' : 'border-blue-100 bg-white/70 text-slate-700 backdrop-blur-sm hover:border-blue-300 hover:text-blue-600'}`}>{subcategory === 'All' ? t('all') : subcategory}</button>)}
-          </div>}
-          <div className="mt-8"><ListingGrid listings={filteredListings} loading={loading} error={error} onSelect={setSelectedListing} /></div>
+
+          {/* Subcategories Pill Bar - Scrollbar Hidden & Tamil Translation Enabled */}
+          {activeCategory !== 'All' && categorySubcategories[activeCategory] && (
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="list" aria-label={`${categoryLabel(activeCategory)} ${t('subcategory')}`}>
+              {['All', ...categorySubcategories[activeCategory]].map((subcategory) => (
+                <button 
+                  key={subcategory} 
+                  type="button" 
+                  onClick={() => setActiveSubcategory(subcategory)} 
+                  className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-all ${
+                    activeSubcategory === subcategory 
+                      ? 'border-transparent bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20' 
+                      : 'border-blue-100 bg-white/70 text-slate-700 backdrop-blur-sm hover:border-blue-300 hover:text-blue-600'
+                  }`}
+                >
+                  {subcategory === 'All' ? t('all') : (subcategoryLabel ? subcategoryLabel(subcategory) : subcategory)}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-8">
+            <ListingGrid listings={filteredListings} loading={loading} error={error} onSelect={setSelectedListing} />
+          </div>
         </section>
       </main>
-      {selectedListing && <ListingDetailModal listing={selectedListing} imagePlaceholder={imagePlaceholder} onEdit={handleEdit} onClose={() => setSelectedListing(null)} />}
-      {editingListing && <ListingEditModal listing={editingListing.listing} onClose={() => setEditingListing(null)} onSave={saveEdit} />}
+
+      {selectedListing && (
+        <ListingDetailModal 
+          listing={selectedListing} 
+          imagePlaceholder={imagePlaceholder} 
+          onEdit={handleEdit} 
+          onClose={() => setSelectedListing(null)} 
+        />
+      )}
+
+      {editingListing && (
+        <ListingEditModal 
+          listing={editingListing.listing} 
+          onClose={() => setEditingListing(null)} 
+          onSave={saveEdit} 
+        />
+      )}
     </div>
   )
 }
