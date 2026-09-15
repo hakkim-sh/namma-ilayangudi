@@ -14,7 +14,7 @@ function Navbar() {
         {/* Title Area (Logo Removed) */}
         <a href="/" className="flex min-w-0 flex-col tracking-tight text-white group">
           <span className="text-xl font-bold">
-            Namma <span className="text-indigo-300">Ilayangudi</span>
+            Namma <span className="text-indigo-300">Ooru</span>
           </span>
           <span className="mt-0.5 text-[11px] font-medium tracking-normal text-indigo-200/70">
             Local marketplace &amp; essential services

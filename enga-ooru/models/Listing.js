@@ -8,6 +8,8 @@ const listingSchema = new mongoose.Schema({
   priceType: { type: String, trim: true },
   locality: { type: String, required: [true, 'Locality is required'], trim: true },
   location: { type: String, trim: true },
+  latitude: { type: Number, default: null },
+  longitude: { type: Number, default: null },
   from: { type: String, trim: true },
   to: { type: String, trim: true },
   departureTime: { type: String, trim: true },

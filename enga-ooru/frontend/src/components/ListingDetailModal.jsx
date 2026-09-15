@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, Edit3, LockKeyhole, MapPin, MessageCircle, Phone, ShieldCheck, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Edit3, LockKeyhole, MapPin, MessageCircle, Phone, ShieldCheck, Navigation, X } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
 
 function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
@@ -35,7 +35,7 @@ function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
     // 2. DELETE ACTION
     const targetId = listing._id || listing.id
     try {
-      // Direct Master Key Bypass on Frontend
+      // Direct Master Key Bypass
       if (enteredKey === 'admin123') {
         const endpoints = [
           `/api/listings/${targetId}?adminKey=admin123`,
@@ -89,14 +89,31 @@ function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
           className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-[28px] border border-blue-50/80 bg-white shadow-2xl shadow-black/30" 
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Top Bar */}
           <div className="flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4">
-            <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-orange-100 text-orange-600"><LockKeyhole size={18} /></span><h2 className="text-base font-bold text-slate-900">Namma Ilayangudi</h2></div>
-            <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label={t('closeDetails')}><X size={19} /></button>
+            <div className="flex items-center gap-3">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-orange-100 text-orange-600">
+                <LockKeyhole size={18} />
+              </span>
+              <h2 className="text-base font-bold text-slate-900">Namma Ilayangudi</h2>
+            </div>
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className="grid h-9 w-9 place-items-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700" 
+              aria-label={t('closeDetails')}
+            >
+              <X size={19} />
+            </button>
           </div>
+
+          {/* Title Banner */}
           <div className="bg-[#4c63f7] p-5 text-center text-white">
             <h3 className="text-xl font-bold">{listing.title}</h3>
             <div className="mx-auto mt-3 h-1 w-16 rounded-full bg-white/80" aria-hidden="true" />
           </div>
+
+          {/* Main Image Slider */}
           <div className="relative">
             <div 
               className="mx-4 mt-4 flex h-56 cursor-pointer items-center justify-center overflow-hidden rounded-2xl bg-slate-100" 
@@ -125,68 +142,115 @@ function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
             )}
           </div>
 
-          <div className="flex gap-2 overflow-x-auto px-4 pt-3">
-            {images.map((image, index) => (
-              <button 
-                type="button" 
-                key={image} 
-                onClick={() => setActiveImage(index)} 
-                className={`h-16 w-20 shrink-0 overflow-hidden rounded-lg border-2 ${index === activeImage ? 'border-emerald-500' : 'border-transparent'}`}
-              >
-                <img src={image} alt={`${listing.title} ${index + 1}`} className="h-full w-full object-cover" />
-              </button>
-            ))}
-          </div>
+          {/* Image Thumbnails */}
+          {images.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto px-4 pt-3">
+              {images.map((image, index) => (
+                <button 
+                  type="button" 
+                  key={image} 
+                  onClick={() => setActiveImage(index)} 
+                  className={`h-16 w-20 shrink-0 overflow-hidden rounded-lg border-2 transition ${index === activeImage ? 'border-emerald-500' : 'border-transparent'}`}
+                >
+                  <img src={image} alt={`${listing.title} ${index + 1}`} className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
 
+          {/* Details Content */}
           <div className="px-4 pb-6 pt-4 sm:px-5">
             <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">
               {categoryLabel(listing.category)} • {listing.subcategory ? subcategoryLabel(listing.subcategory) : t('localListing')}
             </p>
             <h2 className="mt-2 text-xl font-bold text-slate-900">{listing.title}</h2>
-            <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-slate-600">
-              <MapPin size={16} /> {listing.locality || listing.location}
-            </p>
-            <p className="mx-0 mt-5 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700 leading-relaxed">
+
+            {/* Location + Google Maps Live Route Action */}
+            <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3.5">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                <MapPin className="text-indigo-600 shrink-0" size={15} />
+                <span>{listing.locality || 'Ilayangudi'}</span>
+                {listing.location && <span className="text-slate-400">• {listing.location}</span>}
+              </div>
+
+              {listing.latitude && listing.longitude ? (
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${listing.latitude},${listing.longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600 transition hover:bg-indigo-100 active:scale-95"
+                >
+                  <Navigation size={12} className="text-indigo-600" />
+                  <span>Google Maps Route</span>
+                </a>
+              ) : (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((listing.location || listing.locality || 'Ilayangudi') + ' Ilayangudi')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 transition hover:text-indigo-600"
+                >
+                  <Navigation size={12} />
+                  <span>Search on Map</span>
+                </a>
+              )}
+            </div>
+
+            <p className="mx-0 mt-4 rounded-2xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">
               {listing.description || t('defaultDescription')}
             </p>
-            <p className="mt-4 text-xs text-slate-400">
+            <p className="mt-3 text-xs text-slate-400">
               {t('posted')} {listing.postedAt || t('recently')}
             </p>
 
+            {/* Contact Action Buttons */}
             <div className="mt-6 grid grid-cols-2 gap-2">
               <a 
                 href={`tel:${listing.phone || listing.whatsappNumber}`} 
-                className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-slate-800 to-indigo-900 py-4 text-sm font-bold text-white shadow-sm hover:from-indigo-700 hover:to-indigo-900"
+                className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-slate-800 to-indigo-900 py-4 text-sm font-bold text-white shadow-sm transition hover:from-indigo-700 hover:to-indigo-900 active:scale-[0.98]"
               >
-                <Phone size={19} /> Call Now
+                <Phone size={18} /> Call Now
               </a>
               <a 
                 href={`https://wa.me/${cleanNumber}?text=${message}`} 
-                className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50 py-4 text-sm font-bold text-emerald-700 hover:bg-[#25D366] hover:text-white" 
+                className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50 py-4 text-sm font-bold text-emerald-700 transition hover:bg-[#25D366] hover:text-white active:scale-[0.98]" 
                 target="_blank" 
                 rel="noopener noreferrer"
               >
-                <MessageCircle size={19} /> {t('chatWhatsApp')}
+                <MessageCircle size={18} /> {t('chatWhatsApp')}
               </a>
             </div>
 
+            {/* Edit Action */}
             <div className="mt-3">
               <button 
                 type="button" 
                 onClick={() => openAuthModal('edit')} 
-                className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-slate-100 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200"
+                className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-slate-100 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-200 active:scale-[0.99]"
               >
                 <Edit3 size={16} /> Edit
               </button>
-
             </div>
 
-            <button type="button" onClick={() => openAuthModal('delete')} className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-slate-400 transition hover:text-indigo-600"><ShieldCheck size={14} /> Admin Control</button>
-            <p className="mt-2 text-xs text-slate-400">Edit with your post PIN. Deletion is restricted to administrators.</p>
+            {/* Delete Option (User PIN & Admin Compatible) */}
+            <div className="mt-4 pt-2 border-t border-slate-100">
+              <button 
+                type="button" 
+                onClick={() => openAuthModal('delete')} 
+                className="flex items-center gap-1.5 text-xs font-semibold text-rose-500 transition hover:text-rose-700"
+              >
+                <ShieldCheck size={14} /> Delete Listing
+              </button>
+              <p className="mt-1.5 text-xs text-slate-400">
+                Delete or edit using your 4-digit post PIN (or Master Admin Key).
+              </p>
+            </div>
+
           </div>
         </section>
       </div>
 
+      {/* Fullscreen Lightbox */}
       {lightboxOpen && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 p-4" 
@@ -202,26 +266,55 @@ function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
           </button>
         </div>
       )}
+
+      {/* Auth Verification Modal */}
       {authModal.isOpen && (
         <div className="fixed inset-0 z-[60] grid place-items-center bg-indigo-950/60 p-4 backdrop-blur-md" role="presentation">
           <form onSubmit={handleAuthSubmit} className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
               <div className="flex items-center gap-3">
-                <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-600"><LockKeyhole size={19} /></span>
+                <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-600">
+                  <LockKeyhole size={19} />
+                </span>
                 <h3 id="auth-modal-title" className="text-lg font-bold text-slate-900">Listing Verification</h3>
               </div>
-              <button type="button" onClick={closeAuthModal} className="grid h-9 w-9 place-items-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close verification dialog"><X size={19} /></button>
+              <button type="button" onClick={closeAuthModal} className="grid h-9 w-9 place-items-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close verification dialog">
+                <X size={19} />
+              </button>
             </div>
+            
             <div className="bg-[#4c63f7] px-5 py-5 text-white sm:px-6">
               <p className="text-sm font-bold uppercase tracking-widest text-indigo-100">Security Check</p>
-              <p className="mt-2 text-sm leading-relaxed text-indigo-50">Enter your {authModal.action === 'delete' ? 'Master Admin Key' : '4-digit post PIN or Master Admin Key'} to proceed with {authModal.action}.</p>
+              <p className="mt-2 text-sm leading-relaxed text-indigo-50">
+                Enter your 4-digit post PIN or Master Admin Key to proceed with {authModal.action}.
+              </p>
             </div>
+
             <div className="p-5 sm:p-6">
-              <input autoFocus type="password" value={authModal.pin} onChange={(event) => setAuthModal((current) => ({ ...current, pin: event.target.value, error: '' }))} placeholder="e.g. Enter pin or Admin key" className="w-full rounded-2xl border border-slate-200 px-4 py-3.5 text-center text-base tracking-[0.12em] text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100" aria-label="PIN or Admin Key" />
-              {authModal.error && <p className="mt-3 rounded-full bg-rose-50 px-4 py-2.5 text-center text-sm font-medium text-rose-700">! {authModal.error === 'Incorrect PIN or Admin Key' ? 'Incorrect PIN or Admin Key. Please try again.' : authModal.error}</p>}
+              <input 
+                autoFocus 
+                type="password" 
+                value={authModal.pin} 
+                onChange={(event) => setAuthModal((current) => ({ ...current, pin: event.target.value, error: '' }))} 
+                placeholder="Enter 4-digit PIN or Admin key" 
+                className="w-full rounded-2xl border border-slate-200 px-4 py-3.5 text-center text-base tracking-[0.12em] text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100" 
+                aria-label="PIN or Admin Key" 
+              />
+              {authModal.error && (
+                <p className="mt-3 rounded-full bg-rose-50 px-4 py-2.5 text-center text-sm font-medium text-rose-700">
+                  ! {authModal.error === 'Incorrect PIN or Admin Key' ? 'Incorrect PIN or Admin Key. Please try again.' : authModal.error}
+                </p>
+              )}
               <div className="mt-6 flex justify-end gap-3">
-                <button type="button" onClick={closeAuthModal} className="rounded-xl px-5 py-2.5 text-sm font-bold text-slate-500 hover:bg-slate-100">Cancel</button>
-                <button type="submit" className={`rounded-xl px-5 py-2.5 text-sm font-bold shadow-sm transition ${authModal.action === 'delete' ? 'bg-rose-600 text-white hover:bg-rose-700' : 'bg-[#4c63f7] text-white hover:bg-[#3b51e6]'}`}>Confirm &amp; Continue →</button>
+                <button type="button" onClick={closeAuthModal} className="rounded-xl px-5 py-2.5 text-sm font-bold text-slate-500 hover:bg-slate-100">
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className={`rounded-xl px-5 py-2.5 text-sm font-bold shadow-sm transition ${authModal.action === 'delete' ? 'bg-rose-600 text-white hover:bg-rose-700' : 'bg-[#4c63f7] text-white hover:bg-[#3b51e6]'}`}
+                >
+                  Confirm &amp; Continue →
+                </button>
               </div>
             </div>
           </form>

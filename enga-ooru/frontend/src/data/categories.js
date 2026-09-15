@@ -1,5 +1,5 @@
 export const categorySubcategories = {
-  Property: ['Land', 'Shop', 'House', 'Vehicles', 'Cycle'],
+  Property: ['Land', 'Shop', 'House', 'Vehicles', ],
   Emergency: ['Ambulance', 'Hospital', 'Blood Donor'],
   Transport: ['Mini Truck / Tata Ace', 'Heavy Goods Vehicle', 'General Transport / Load Auto'],
   Taxi: ['Auto', 'Car Taxi', 'Travels / Van'],
