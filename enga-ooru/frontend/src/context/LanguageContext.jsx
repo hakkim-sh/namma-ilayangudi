@@ -43,7 +43,7 @@ const translations = {
     phone: 'Phone Number',
     tenDigit: '10 digit number',
     photos: 'Photos',
-    selectPhotos: 'Select 1 to 5 images',
+    selectPhotos: 'Select 1 to 3 images',
     description: 'Description',
     tellNeighbours: 'Tell your neighbours a little more...',
     discussionBooking: 'Price on Discussion / Direct Booking via WhatsApp',
@@ -54,7 +54,7 @@ const translations = {
     uploadPreview: 'Upload preview',
     removeImage: 'Remove image',
     errors: {
-      photos: 'Please select up to 5 photos.',
+      photos: 'Please select up to 3 photos.',
       number: 'Please enter a valid 10 digit WhatsApp number.',
       requiredPhoto: 'Please upload at least 1 photo.',
       save: 'Unable to save this ad. Please make sure the backend is running.',
@@ -90,7 +90,7 @@ const translations = {
       Footwear: 'Footwear',
       // Property
       Land: 'Land',
-      Shop: 'Commercial Shop',
+      Shop: 'Shop',
       House: 'House',
       Vehicles: 'Vehicles',
       // Emergency
@@ -173,7 +173,7 @@ const translations = {
     phone: 'தொலைபேசி எண்',
     tenDigit: '10 இலக்க எண்',
     photos: 'படங்கள்',
-    selectPhotos: '1 முதல் 5 படங்களைத் தேர்ந்தெடுக்கவும்',
+    selectPhotos: '1 முதல் 3 படங்களைத் தேர்ந்தெடுக்கவும்',
     description: 'விளக்கம்',
     tellNeighbours: 'உங்கள் அண்டை வீட்டாரிடம் இன்னும் கொஞ்சம் சொல்லுங்கள்...',
     discussionBooking: 'விலை பேசி முடிவு / WhatsApp மூலம் நேரடி முன்பதிவு',
@@ -184,7 +184,7 @@ const translations = {
     uploadPreview: 'பட முன்னோட்டம்',
     removeImage: 'படத்தை அகற்று',
     errors: {
-      photos: 'அதிகபட்சம் 5 படங்களைத் தேர்ந்தெடுக்கவும்.',
+      photos: 'அதிகபட்சம் 3 படங்களைத் தேர்ந்தெடுக்கவும்.',
       number: 'சரியான 10 இலக்க WhatsApp எண்ணை உள்ளிடவும்.',
       requiredPhoto: 'குறைந்தது 1 படத்தையாவது பதிவேற்றவும்.',
       save: 'விளம்பரத்தைச் சேமிக்க முடியவில்லை. பின்தளம் இயங்குகிறதா எனச் சரிபார்க்கவும்.',

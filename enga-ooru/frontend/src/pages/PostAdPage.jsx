@@ -27,7 +27,7 @@ const CATEGORY_DEFINITIONS = {
     ta: 'நிலம் & வீடுகள்',
     subcategories: [
       { key: 'Land', en: 'Land / Plot', ta: 'நிலம் / பிளாட்' },
-      { key: 'Shop', en: 'Commercial Shop', ta: 'வணிகக் கடை' },
+      { key: 'Shop', en: 'Shop', ta: 'கடை' },
       { key: 'House', en: 'House / Villa', ta: 'வீடு' },
       { key: 'Vehicles', en: 'Vehicles', ta: 'வாகனங்கள்' },
       { key: 'Other', en: 'Other', ta: 'மற்றவை' }
