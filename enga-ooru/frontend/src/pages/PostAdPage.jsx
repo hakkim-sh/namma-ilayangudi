@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, MapPin, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { ArrowLeft, MapPin, CheckCircle2, AlertCircle, Loader2, X, Plus } from 'lucide-react'
+import Cropper from 'react-easy-crop'
 import { useLanguage } from '../context/LanguageContext'
 
 const CATEGORY_DEFINITIONS = {
@@ -107,39 +108,31 @@ const CATEGORY_DEFINITIONS = {
   }
 }
 
-// Canvas-based image compressor: Converts any MB photo to ~150-250KB Base64
-const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.7) => {
+// Crop panna image-ai neat-aa compress panni base64 aakkum function
+const getCroppedImg = (imageSrc, pixelCrop) => {
   return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.readAsDataURL(file)
-    reader.onload = (event) => {
-      const img = new Image()
-      img.src = event.target.result
-      img.onload = () => {
-        let width = img.width
-        let height = img.height
+    const image = new Image()
+    image.src = imageSrc
+    image.onload = () => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
 
-        if (width > height) {
-          if (width > maxWidth) {
-            height = Math.round((height * maxWidth) / width)
-            width = maxWidth
-          }
-        } else {
-          if (height > maxHeight) {
-            width = Math.round((width * maxHeight) / height)
-            height = maxHeight
-          }
-        }
+      canvas.width = 800
+      canvas.height = 600
 
-        const canvas = document.createElement('canvas')
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-        ctx.drawImage(img, 0, 0, width, height)
+      ctx.drawImage(
+        image,
+        pixelCrop.x,
+        pixelCrop.y,
+        pixelCrop.width,
+        pixelCrop.height,
+        0,
+        0,
+        800,
+        600
+      )
 
-        const compressedBase64 = canvas.toDataURL('image/jpeg', quality)
-        resolve(compressedBase64)
-      }
+      resolve(canvas.toDataURL('image/jpeg', 0.65))
     }
   })
 }
@@ -167,7 +160,14 @@ function PostAdPage() {
 
   const [sameAsPhone, setSameAsPhone] = useState(true)
   const [images, setImages] = useState([])
-  const [compressing, setCompressing] = useState(false)
+
+  // Crop States
+  const [cropModalOpen, setCropModalOpen] = useState(false)
+  const [rawImageSrc, setRawImageSrc] = useState(null)
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
+
   const [isLocating, setIsLocating] = useState(false)
   const [locationSuccess, setLocationSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -217,25 +217,42 @@ function PostAdPage() {
     }))
   }
 
-  const handleImageChange = async (e) => {
-    const files = Array.from(e.target.files)
-    if (files.length > 5) {
-      setError(isTamil ? 'அதிகபட்சம் 5 படங்கள் மட்டுமே பதிவேற்ற முடியும்' : 'Maximum 5 images allowed')
-      return
+  // Image choose panna udaney crop screen open aaga
+  const handleImageSelect = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      if (images.length >= 5) {
+        setError(isTamil ? 'அதிகபட்சம் 5 படங்கள் மட்டுமே சேர்க்க முடியும்' : 'Maximum 5 images allowed')
+        return
+      }
+      const reader = new FileReader()
+      reader.addEventListener('load', () => {
+        setRawImageSrc(reader.result)
+        setCropModalOpen(true)
+      })
+      reader.readAsDataURL(e.target.files[0])
+      e.target.value = null
     }
+  }
 
+  const handleCropComplete = (_, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels)
+  }
+
+  const handleSaveCroppedImage = async () => {
     try {
-      setCompressing(true)
-      setError('')
-      const compressedList = await Promise.all(
-        files.map((file) => compressImage(file))
-      )
-      setImages(compressedList)
+      const croppedBase64 = await getCroppedImg(rawImageSrc, croppedAreaPixels)
+      setImages((prev) => [...prev, croppedBase64])
+      setCropModalOpen(false)
+      setRawImageSrc(null)
+      setZoom(1)
+      setCrop({ x: 0, y: 0 })
     } catch {
-      setError(isTamil ? 'படங்களை சுருக்குவதில் பிழை ஏற்பட்டது' : 'Error compressing images')
-    } finally {
-      setCompressing(false)
+      setError(isTamil ? 'படத்தை செதுக்குவதில் பிழை ஏற்பட்டது' : 'Error cropping image')
     }
+  }
+
+  const handleRemoveImage = (indexToRemove) => {
+    setImages((prev) => prev.filter((_, idx) => idx !== indexToRemove))
   }
 
   const handleSubmit = async (e) => {
@@ -284,11 +301,11 @@ function PostAdPage() {
       images: images
     }
 
-    try {
-     const API_BASE = window.location.hostname === 'localhost' 
-        ? '' 
-        : 'https://namma-ilayangudi.onrender.com'
+    const API_BASE = window.location.hostname === 'localhost' 
+      ? '' 
+      : 'https://namma-ilayangudi.onrender.com'
 
+    try {
       const res = await fetch(`${API_BASE}/api/listings`, {
         method: 'POST',
         headers: {
@@ -554,28 +571,42 @@ function PostAdPage() {
             />
           </div>
 
-          {/* Photo Upload with auto-compress feedback */}
+          {/* Photo Upload with Interactive Crop */}
           <div>
             <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
-              {isTamil ? 'படங்கள் (1 முதல் 5 படங்கள்)' : 'Photos (Select 1 to 5 images)'}
+              {isTamil ? 'படங்கள் (அதிகபட்சம் 5 படங்கள்)' : 'Photos (Up to 5 images)'}
             </label>
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleImageChange}
-              className="mt-1.5 block w-full text-xs text-slate-500 file:mr-4 file:rounded-xl file:border-0 file:bg-slate-100 file:px-4 file:py-2.5 file:text-xs file:font-semibold file:text-slate-700 hover:file:bg-slate-200"
-            />
-            {compressing && (
-              <p className="mt-1.5 text-xs text-indigo-600 animate-pulse font-medium">
-                {isTamil ? 'படங்கள் சுருக்கப்பட்டு தயாராகிறது...' : 'Compressing images to lightweight format...'}
-              </p>
-            )}
-            {images.length > 0 && !compressing && (
-              <p className="mt-1.5 text-xs text-emerald-600 font-semibold">
-                ✓ {images.length} {isTamil ? 'படங்கள் தயார்' : 'images compressed & ready'}
-              </p>
-            )}
+            
+            <div className="mt-2.5 flex flex-wrap gap-3">
+              {images.map((img, idx) => (
+                <div key={idx} className="relative h-20 w-24 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+                  <img src={img} alt="preview" className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage(idx)}
+                    className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-600 text-white shadow hover:bg-rose-700"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+
+              {images.length < 5 && (
+                <label className="flex h-20 w-24 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/50 text-indigo-600 transition hover:bg-indigo-50 hover:border-indigo-400">
+                  <Plus size={20} />
+                  <span className="mt-1 text-[10px] font-bold">{isTamil ? 'படம் சேர்க்க' : 'Add Photo'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+            <p className="mt-1.5 text-[11px] text-slate-500">
+              {isTamil ? 'படம் சேர்த்தவுடன் தேவைக்கேற்ப நகர்த்தி அல்லது பெரிதாக்கி செதுக்கலாம் (Crop).' : 'Select photo to crop and adjust aspect ratio.'}
+            </p>
           </div>
 
           {/* Description */}
@@ -596,7 +627,7 @@ function PostAdPage() {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading || compressing}
+            disabled={loading}
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#4c63f7] py-4 text-base font-bold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-[#3b51e6] active:scale-[0.99] disabled:opacity-60"
           >
             {loading ? (
@@ -612,6 +643,63 @@ function PostAdPage() {
         </form>
 
       </div>
+
+      {/* Full-screen Crop Modal */}
+      {cropModalOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/95 p-4 backdrop-blur-md">
+          <div className="flex items-center justify-between pb-3 text-white">
+            <h3 className="text-sm font-bold tracking-wide">
+              {isTamil ? 'படத்தை தேவைக்கேற்ப செதுக்கவும் (Crop)' : 'Crop & Adjust Image'}
+            </h3>
+            <button 
+              type="button" 
+              onClick={() => {
+                setCropModalOpen(false)
+                setRawImageSrc(null)
+              }}
+              className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold text-rose-300 hover:bg-white/20"
+            >
+              {isTamil ? 'ரத்து' : 'Cancel'}
+            </button>
+          </div>
+
+          <div className="relative flex-1 overflow-hidden rounded-2xl bg-black">
+            <Cropper
+              image={rawImageSrc}
+              crop={crop}
+              zoom={zoom}
+              aspect={4 / 3}
+              onCropChange={setCrop}
+              onCropComplete={handleCropComplete}
+              onZoomChange={setZoom}
+            />
+          </div>
+
+          <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 text-xs text-white">
+              <span>{isTamil ? 'பெரிதாக்க:' : 'Zoom:'}</span>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.1}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="w-44 accent-indigo-500"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSaveCroppedImage}
+              className="rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-600/40 transition hover:bg-indigo-500 active:scale-95"
+            >
+              {isTamil ? 'சரி, படத்தை இணைக்கவும் ✓' : 'Done & Add Photo ✓'}
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
