@@ -57,7 +57,7 @@ const CATEGORY_DEFINITIONS = {
     en: 'Taxi & Travels',
     ta: 'வாடகை வண்டிகள் & டாக்ஸி',
     subcategories: [
-      { key: 'Auto', en: 'Auto Rickshaw', ta: 'ஆட்டோ' },
+      { key: 'Auto', en: 'Auto', ta: 'ஆட்டோ' },
       { key: 'Car Taxi', en: 'Car Taxi / Cab', ta: 'கார் டாக்ஸி' },
       { key: 'Travels / Van', en: 'Tour Travels / Van', ta: 'டிராவல்ஸ் / வேன்' },
       { key: 'Other', en: 'Other', ta: 'மற்றவை' }
@@ -107,6 +107,43 @@ const CATEGORY_DEFINITIONS = {
   }
 }
 
+// Canvas-based image compressor: Converts any MB photo to ~150-250KB Base64
+const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.7) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = (event) => {
+      const img = new Image()
+      img.src = event.target.result
+      img.onload = () => {
+        let width = img.width
+        let height = img.height
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width)
+            width = maxWidth
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height)
+            height = maxHeight
+          }
+        }
+
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+
+        const compressedBase64 = canvas.toDataURL('image/jpeg', quality)
+        resolve(compressedBase64)
+      }
+    }
+  })
+}
+
 function PostAdPage() {
   const navigate = useNavigate()
   const { isTamil } = useLanguage()
@@ -119,7 +156,6 @@ function PostAdPage() {
     customSubcategory: '',
     price: '',
     priceType: 'Fixed',
-    locality: '',
     location: '',
     latitude: null,
     longitude: null,
@@ -131,6 +167,7 @@ function PostAdPage() {
 
   const [sameAsPhone, setSameAsPhone] = useState(true)
   const [images, setImages] = useState([])
+  const [compressing, setCompressing] = useState(false)
   const [isLocating, setIsLocating] = useState(false)
   const [locationSuccess, setLocationSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -180,14 +217,25 @@ function PostAdPage() {
     }))
   }
 
-  const handleImageChange = (e) => {
+  const handleImageChange = async (e) => {
     const files = Array.from(e.target.files)
     if (files.length > 5) {
       setError(isTamil ? 'அதிகபட்சம் 5 படங்கள் மட்டுமே பதிவேற்ற முடியும்' : 'Maximum 5 images allowed')
       return
     }
-    setImages(files)
-    setError('')
+
+    try {
+      setCompressing(true)
+      setError('')
+      const compressedList = await Promise.all(
+        files.map((file) => compressImage(file))
+      )
+      setImages(compressedList)
+    } catch {
+      setError(isTamil ? 'படங்களை சுருக்குவதில் பிழை ஏற்பட்டது' : 'Error compressing images')
+    } finally {
+      setCompressing(false)
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -219,29 +267,30 @@ function PostAdPage() {
 
     const finalWhatsapp = sameAsPhone ? formData.phone : (formData.whatsappNumber || formData.phone)
 
-    const payload = new FormData()
-    payload.append('title', formData.title.trim())
-    payload.append('category', resolvedCategory)
-    payload.append('subcategory', resolvedSubcategory)
-    payload.append('price', formData.price || '')
-    payload.append('priceType', formData.priceType)
-    payload.append('locality', formData.locality.trim() || 'Ilayangudi')
-    payload.append('location', formData.location.trim())
-    if (formData.latitude) payload.append('latitude', formData.latitude)
-    if (formData.longitude) payload.append('longitude', formData.longitude)
-    payload.append('phone', formData.phone.trim())
-    payload.append('whatsappNumber', finalWhatsapp.trim())
-    payload.append('pin', formData.pin.trim())
-    payload.append('description', formData.description.trim())
-
-    images.forEach((file) => {
-      payload.append('images', file)
-    })
+    const payload = {
+      title: formData.title.trim(),
+      category: resolvedCategory,
+      subcategory: resolvedSubcategory,
+      price: formData.price ? formData.price.trim() : '',
+      priceType: formData.priceType,
+      locality: 'Ilayangudi',
+      location: formData.location.trim(),
+      latitude: formData.latitude,
+      longitude: formData.longitude,
+      phone: formData.phone.trim(),
+      whatsappNumber: finalWhatsapp.trim(),
+      pin: formData.pin.trim(),
+      description: formData.description.trim(),
+      images: images
+    }
 
     try {
       const res = await fetch('/api/listings', {
         method: 'POST',
-        body: payload
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
       })
       const result = await res.json().catch(() => ({}))
 
@@ -251,7 +300,8 @@ function PostAdPage() {
           navigate('/')
         }, 2200)
       } else {
-        setError(result.message || (isTamil ? 'விளம்பரம் பதிவேற்ற முடியவில்லை. மீண்டும் முயற்சிக்கவும்.' : 'Failed to submit listing.'))
+        const errorMsg = result.errors ? result.errors.join(', ') : result.message
+        setError(errorMsg || (isTamil ? 'விளம்பரம் பதிவேற்ற முடியவில்லை. மீண்டும் முயற்சிக்கவும்.' : 'Failed to submit listing.'))
       }
     } catch (err) {
       console.error(err)
@@ -359,7 +409,6 @@ function PostAdPage() {
               ))}
             </select>
 
-            {/* Custom Subcategory Input if Other is chosen */}
             {formData.subcategory === 'Other' && (
               <input
                 type="text"
@@ -403,25 +452,10 @@ function PostAdPage() {
             </div>
           </div>
 
-          {/* Locality / Street */}
-          <div>
-            <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
-              {isTamil ? 'பகுதி அல்லது தெரு பெயர் *' : 'Locality / Street name *'}
-            </label>
-            <input
-              type="text"
-              required
-              placeholder={isTamil ? 'எ.கா: காமராஜர் ரோடு, பஸ் நிலையம் அருகில்' : 'Area or street name'}
-              value={formData.locality}
-              onChange={(e) => setFormData({ ...formData, locality: e.target.value })}
-              className="mt-1.5 w-full rounded-2xl border border-slate-200 px-4 py-3.5 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
-            />
-          </div>
-
           {/* Location & Optional Live GPS */}
           <div>
             <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
-              {isTamil ? 'அடையாளம் / முழு முகவரி (Optional)' : 'Location / Landmark (Optional)'}
+              {isTamil ? 'அடையாளம் / முழு முகவரி (விருப்பம்)' : 'Location / Landmark (Optional)'}
             </label>
             <input
               type="text"
@@ -516,7 +550,7 @@ function PostAdPage() {
             />
           </div>
 
-          {/* Photo Upload */}
+          {/* Photo Upload with auto-compress feedback */}
           <div>
             <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
               {isTamil ? 'படங்கள் (1 முதல் 5 படங்கள்)' : 'Photos (Select 1 to 5 images)'}
@@ -528,6 +562,16 @@ function PostAdPage() {
               onChange={handleImageChange}
               className="mt-1.5 block w-full text-xs text-slate-500 file:mr-4 file:rounded-xl file:border-0 file:bg-slate-100 file:px-4 file:py-2.5 file:text-xs file:font-semibold file:text-slate-700 hover:file:bg-slate-200"
             />
+            {compressing && (
+              <p className="mt-1.5 text-xs text-indigo-600 animate-pulse font-medium">
+                {isTamil ? 'படங்கள் சுருக்கப்பட்டு தயாராகிறது...' : 'Compressing images to lightweight format...'}
+              </p>
+            )}
+            {images.length > 0 && !compressing && (
+              <p className="mt-1.5 text-xs text-emerald-600 font-semibold">
+                ✓ {images.length} {isTamil ? 'படங்கள் தயார்' : 'images compressed & ready'}
+              </p>
+            )}
           </div>
 
           {/* Description */}
@@ -548,7 +592,7 @@ function PostAdPage() {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || compressing}
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#4c63f7] py-4 text-base font-bold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-[#3b51e6] active:scale-[0.99] disabled:opacity-60"
           >
             {loading ? (
