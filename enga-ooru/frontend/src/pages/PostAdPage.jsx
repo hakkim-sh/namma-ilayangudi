@@ -285,7 +285,11 @@ function PostAdPage() {
     }
 
     try {
-      const res = await fetch('/api/listings', {
+     const API_BASE = window.location.hostname === 'localhost' 
+        ? '' 
+        : 'https://namma-ilayangudi.onrender.com'
+
+      const res = await fetch(`${API_BASE}/api/listings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
