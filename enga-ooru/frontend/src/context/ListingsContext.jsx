@@ -1,9 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 
 const STORAGE_KEY = 'namma_ilayangudi_listings'
-const API_BASE = window.location.hostname === 'localhost'
-  ? 'https://namma-ilayangudi.onrender.com'
-  : ''
+const API_BASE = 'https://namma-ilayangudi.onrender.com'
 const API_URL = `${API_BASE}/api/listings`
 const imagePlaceholder = 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=800&q=80'
 
