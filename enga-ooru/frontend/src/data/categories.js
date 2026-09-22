@@ -1,3 +1,17 @@
+export const categories = [
+  'Shops',
+  'Property',
+  'Emergency',
+  'Food & Dining',
+  'Home Business',
+  'Delivery',
+  'Taxi',
+  'Transport',
+  'Services',
+  'Rent',
+  'Bus Timings'
+]
+
 export const categorySubcategories = {
   Shops: [
     'Grocery',
@@ -5,24 +19,75 @@ export const categorySubcategories = {
     'Hardware & Paint',
     'Flower Shop',
     'Furniture & Home',
-    'Medical & Pharmacy',
     'Textiles & Clothing',
     'Mobile & Electronics',
-    'Meat & Fish',
     'Vegetables & Fruits',
     'Footwear',
     'Other'
   ],
-  Property: ['Land', 'Shop', 'House', 'Vehicles'],
-  Emergency: ['Ambulance', 'Hospital', 'Blood Donor'],
-  Transport: ['Mini Truck / Tata Ace', 'Heavy Goods Vehicle', 'General Transport / Load Auto'],
-  Taxi: ['Auto', 'Car Taxi', 'Travels / Van'],
-  Services: ['AC Service', 'Mobile Service', 'TV Repair', 'Washing Machine', 'Electrician', 'Plumber', 'Education & Tuition', 'Daily Labour & Shifting'],
-  Rent: ['Shop Rent', 'House Rent', 'Things / Equipment Rent'],
-  'Food & Dining': ['Home Baker', 'Hotel & Restaurant', 'Meat Stall / Fresh Meat'],
-  'Bus Timings': ['Bus Schedule']
+  Property: [
+    'Second Hand',
+    'Land',
+    'Shop',
+    'House',
+    'Vehicles',
+    'Other'
+  ],
+  Emergency: [
+    'Pharmacy',
+    'Ambulance',
+    'Hospital',
+    'Blood Donor',
+    'Other'
+  ],
+  'Food & Dining': [
+    'Home Made Food',
+    'Home Baker',
+    'Hotel & Restaurant',
+    'Meat Stall / Fresh Meat',
+    'Other'
+  ],
+  'Home Business': [
+    'Tailoring & Aari',
+    'Mehandi Design',
+    'Home Boutique',
+    'Handmade Crafts',
+    'Other'
+  ],
+  Delivery: [
+    'Contect for delivery',
+    'Other'
+  ],
+  Taxi: [
+    'Auto',
+    'Car Taxi',
+    'Travels / Van',
+    'Other'
+  ],
+  Transport: [
+    'Mini Truck / Tata Ace',
+    'Heavy Goods Vehicle',
+    'General Transport / Load Auto',
+    'Other'
+  ],
+  Services: [
+    'AC Service',
+    'Mobile Service',
+    'TV Repair',
+    'Washing Machine',
+    'Electrician',
+    'Plumber',
+    'Education & Tuition',
+    'Daily Labour & Shifting',
+    'Other'
+  ],
+  Rent: [
+    'Shop Rent',
+    'House Rent',
+    'Things / Equipment Rent',
+    'Other'
+  ],
+  'Bus Timings': [
+    'Bus Schedule'
+  ]
 }
-
-export const categories = Object.keys(categorySubcategories)
-
-export const directContactCategories = ['Shops', 'Emergency', 'Transport', 'Taxi', 'Services', 'Rent', 'Bus Timings']

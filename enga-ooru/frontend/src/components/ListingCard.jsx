@@ -2,16 +2,17 @@ import { ArrowRight, MapPin } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
 
 function formatPrice(listing) {
-  if (listing.priceType === 'Discussion' || listing.priceType === 'Booking' || ['Emergency', 'Transport', 'Services', 'Rent'].includes(listing.category)) {
-    return 'Price on Discussion / Direct Booking'
+  // Price illana / discussion / services edhuvum card front-la kaatta vendam
+  if (!listing.price || listing.priceType === 'Discussion' || listing.priceType === 'Booking' || ['Emergency', 'Transport', 'Services', 'Rent'].includes(listing.category)) {
+    return null
   }
   if (typeof listing.price === 'number' && !Number.isNaN(listing.price)) {
-    return `₹${listing.price.toLocaleString('en-IN')}${listing.priceType === 'Monthly' ? ' / month' : ''}`
+    return `₹${listing.price.toLocaleString('en-IN')}${listing.priceType === 'Monthly' ? ' / mo' : ''}`
   }
   if (typeof listing.price === 'string' && /^\d+(\.\d+)?$/.test(listing.price.trim())) {
     return `₹${Number(listing.price).toLocaleString('en-IN')}`
   }
-  return listing.price || listing.priceType || 'Price on Discussion'
+  return null
 }
 
 function ListingCard({ listing, imagePlaceholder, onSelect }) {
@@ -20,6 +21,7 @@ function ListingCard({ listing, imagePlaceholder, onSelect }) {
   const badge = `${categoryLabel(listing.category)} • ${listing.subcategory ? subcategoryLabel(listing.subcategory) : t('localListing')}`
   const isBusTimings = listing.category === 'Bus Timings'
   const schedule = isBusTimings && `${listing.departureTime || ''} | ${listing.from || ''} ➔ ${listing.to || ''} (${listing.busType || ''})${listing.routeVia ? ` - Via ${listing.routeVia}` : ''}`
+  const displayPrice = formatPrice(listing)
 
   return (
     <article 
@@ -47,27 +49,30 @@ function ListingCard({ listing, imagePlaceholder, onSelect }) {
       {/* Content Section */}
       <div className="flex flex-grow flex-col justify-between p-5">
         <div>
-          <p className="mb-2 inline-block w-fit rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-[#4c63f7]">
-            {badge}
-          </p>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="inline-block w-fit rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-[#4c63f7]">
+              {badge}
+            </p>
+            {displayPrice && (
+              <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700">
+                {displayPrice}
+              </span>
+            )}
+          </div>
 
           <h3 className="line-clamp-1 text-lg font-bold leading-snug text-slate-900 group-hover:text-[#4c63f7] transition-colors">
             {listing.title}
           </h3>
 
-          {schedule ? (
+          {schedule && (
             <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-900">
               ⏰ {schedule}
             </p>
-          ) : (
-            <p className="mt-2 text-sm font-bold text-slate-700">
-              {formatPrice(listing)}
-            </p>
           )}
 
-          <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+          <p className="mt-2.5 flex items-center gap-1.5 text-xs text-slate-500">
             <MapPin size={14} className="text-slate-400" />
-            <span className="line-clamp-1">{listing.location || listing.locality || 'Local'}</span>
+            <span className="line-clamp-1">{listing.location || listing.locality || 'Ilayangudi'}</span>
           </p>
         </div>
 

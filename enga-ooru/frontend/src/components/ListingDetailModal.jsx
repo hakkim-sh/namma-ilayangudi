@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, Edit3, LockKeyhole, MapPin, MessageCircle, Phone, ShieldCheck, Navigation, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Edit3, LockKeyhole, MapPin, MessageCircle, Phone, ShieldCheck, Navigation, X, Star } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
 
 function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
@@ -8,13 +8,60 @@ function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
   const [activeImage, setActiveImage] = useState(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [authModal, setAuthModal] = useState({ isOpen: false, action: null, pin: '', error: '' })
+
+  // User Interactive Rating States
+  const targetId = listing._id || listing.id
+  const storageRatingKey = `rated_${targetId}`
+  const [userRating, setUserRating] = useState(() => {
+    return Number(localStorage.getItem(storageRatingKey)) || 0
+  })
+  const [hoverRating, setHoverRating] = useState(0)
+  const [ratingSubmitted, setRatingSubmitted] = useState(() => {
+    return Boolean(localStorage.getItem(storageRatingKey))
+  })
+  const [currentRating, setCurrentRating] = useState(() => {
+    return listing.rating || 5.0
+  })
+
+  const handleRate = async (starValue) => {
+    setUserRating(starValue)
+    setRatingSubmitted(true)
+    localStorage.setItem(storageRatingKey, String(starValue))
+    setCurrentRating(starValue.toFixed(1))
+
+    const apiBase = window.location.hostname === 'localhost' ? '' : 'https://namma-ilayangudi.onrender.com'
+    try {
+      await fetch(`${apiBase}/api/listings/${targetId}/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: starValue })
+      }).catch(() => {})
+    } catch (_) {}
+  }
+
+  // 1. WHATSAPP COUNTRY CODE (+91) FORMAT FIX
+  const formatWhatsAppUrl = (phone, title) => {
+    if (!phone) return '#'
+    let clean = String(phone).replace(/\D/g, '')
+    if (clean.length === 10) {
+      clean = '91' + clean
+    }
+    const message = encodeURIComponent(`Hello, I am interested in your listing on Namma Ilayangudi: ${title}`)
+    return `https://wa.me/${clean}?text=${message}`
+  }
+
   const phoneNumber = listing.phone || listing.whatsappNumber || listing.whatsapp || ''
-  const cleanNumber = phoneNumber.replace(/\D/g, '')
-  const message = encodeURIComponent(`Hello, I am interested in your listing on Namma Ilayangudi: ${listing.title}`)
+  const whatsAppUrl = formatWhatsAppUrl(listing.whatsappNumber || listing.phone, listing.title)
+
   const moveImage = (step) => setActiveImage((current) => (current + step + images.length) % images.length)
 
   const openAuthModal = (action) => setAuthModal({ isOpen: true, action, pin: '', error: '' })
   const closeAuthModal = () => setAuthModal({ isOpen: false, action: null, pin: '', error: '' })
+
+  // 2. DYNAMIC API BASE URL FOR LOCAL & RENDER PRODUCTION DELETE
+ const getApiBase = () => {
+    return 'https://namma-ilayangudi.onrender.com'
+  }
 
   const handleAuthSubmit = async (event) => {
     event.preventDefault()
@@ -33,24 +80,16 @@ function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
     }
 
     // 2. DELETE ACTION
-    const targetId = listing._id || listing.id
+    const apiBase = getApiBase()
     try {
-      // Direct Master Key Bypass
       if (enteredKey === 'admin123') {
-        const endpoints = [
-          `/api/listings/${targetId}?adminKey=admin123`,
-          `http://localhost:5000/api/listings/${targetId}?adminKey=admin123`
-        ]
-
-        for (const url of endpoints) {
-          try {
-            await fetch(url, {
-              method: 'DELETE',
-              headers: { 'Content-Type': 'application/json', 'x-admin-key': 'admin123' },
-              body: JSON.stringify({ adminKey: 'admin123', pin: 'admin123' })
-            })
-          } catch (_) {}
-        }
+        try {
+          await fetch(`${apiBase}/api/listings/${targetId}?adminKey=admin123`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json', 'x-admin-key': 'admin123' },
+            body: JSON.stringify({ adminKey: 'admin123', pin: 'admin123' })
+          })
+        } catch (_) {}
 
         closeAuthModal()
         onClose()
@@ -58,8 +97,7 @@ function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
         return
       }
 
-      // Normal User PIN check
-      const res = await fetch(`/api/listings/${targetId}?pin=${encodeURIComponent(enteredKey)}`, {
+      const res = await fetch(`${apiBase}/api/listings/${targetId}?pin=${encodeURIComponent(enteredKey)}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json', 'x-pin': enteredKey },
         body: JSON.stringify({ pin: enteredKey })
@@ -74,8 +112,8 @@ function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
         setAuthModal((current) => ({ ...current, error: errData.message || 'Incorrect PIN or Admin Key' }))
       }
     } catch (error) {
-      console.error(error)
-      setAuthModal((current) => ({ ...current, error: 'Server error deleting listing.' }))
+      console.error('Delete error:', error)
+      setAuthModal((current) => ({ ...current, error: 'Server error deleting listing. Check connection.' }))
     }
   }
 
@@ -160,10 +198,53 @@ function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
 
           {/* Details Content */}
           <div className="px-4 pb-6 pt-4 sm:px-5">
-            <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">
-              {categoryLabel(listing.category)} • {listing.subcategory ? subcategoryLabel(listing.subcategory) : t('localListing')}
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">
+                {categoryLabel(listing.category)} • {listing.subcategory ? subcategoryLabel(listing.subcategory) : t('localListing')}
+              </p>
+
+              {/* Display Overall Rating */}
+              <div className="flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
+                <Star size={12} className="fill-amber-400 text-amber-400" />
+                <span>{currentRating}</span>
+              </div>
+            </div>
+
             <h2 className="mt-2 text-xl font-bold text-slate-900">{listing.title}</h2>
+
+            {/* User Star Rating Box */}
+            <div className="mt-3.5 flex items-center justify-between rounded-2xl border border-amber-100 bg-amber-50/60 p-3.5">
+              <div>
+                <p className="text-xs font-bold text-slate-800">
+                  {ratingSubmitted ? 'உங்கள் மதிப்பீடு (Your Rating):' : 'ரேட்டிங் கொடுக்கவும் (Rate this):'}
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  {ratingSubmitted ? 'நன்றி! பதிவு செய்யப்பட்டது ✓' : 'நட்சத்திரத்தை தொட்டு ரேட் செய்யவும்'}
+                </p>
+              </div>
+
+              {/* 5 Interactive Stars */}
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const filled = hoverRating ? star <= hoverRating : star <= userRating
+                  return (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => handleRate(star)}
+                      onMouseEnter={() => setHoverRating(star)}
+                      onMouseLeave={() => setHoverRating(0)}
+                      className="p-1 transition-transform hover:scale-125 focus:outline-none"
+                    >
+                      <Star
+                        size={20}
+                        className={filled ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}
+                      />
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
 
             {/* Location + Google Maps Live Route Action */}
             <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3.5">
@@ -206,13 +287,13 @@ function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
             {/* Contact Action Buttons */}
             <div className="mt-6 grid grid-cols-2 gap-2">
               <a 
-                href={`tel:${listing.phone || listing.whatsappNumber}`} 
+                href={`tel:${phoneNumber}`} 
                 className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-slate-800 to-indigo-900 py-4 text-sm font-bold text-white shadow-sm transition hover:from-indigo-700 hover:to-indigo-900 active:scale-[0.98]"
               >
                 <Phone size={18} /> Call Now
               </a>
               <a 
-                href={`https://wa.me/${cleanNumber}?text=${message}`} 
+                href={whatsAppUrl} 
                 className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50 py-4 text-sm font-bold text-emerald-700 transition hover:bg-[#25D366] hover:text-white active:scale-[0.98]" 
                 target="_blank" 
                 rel="noopener noreferrer"
@@ -232,7 +313,7 @@ function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
               </button>
             </div>
 
-            {/* Delete Option (User PIN & Admin Compatible) */}
+            {/* Delete Option */}
             <div className="mt-4 pt-2 border-t border-slate-100">
               <button 
                 type="button" 
