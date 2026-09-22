@@ -125,12 +125,12 @@ const CATEGORY_DEFINITIONS = {
     en: 'Bus Timings',
     ta: 'பேருந்து நேரம்',
     subcategories: [
-      { key: 'Bus Schedule & Route', en: 'Bus Schedule & Route', ta: 'பேருந்து அட்டவணை' }
+      { key: 'Bus Schedule', en: 'Bus Schedule', ta: 'பேருந்து அட்டவணை' }
     ]
   }
 }
 
-// 50 KB - 100 KB Lightweight Image Compressor & Cropper
+// 50 KB - 100 KB Lightweight Image Compressor
 const getCroppedImg = (imageSrc, pixelCrop) => {
   return new Promise((resolve) => {
     const image = new Image()
@@ -139,7 +139,6 @@ const getCroppedImg = (imageSrc, pixelCrop) => {
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')
       
-      // Target 600x450 resolution for ~50KB-90KB size
       canvas.width = 600
       canvas.height = 450
       
@@ -157,7 +156,6 @@ const getCroppedImg = (imageSrc, pixelCrop) => {
         450
       )
       
-      // 0.62 quality outputs clean image within 50KB - 90KB
       resolve(canvas.toDataURL('image/jpeg', 0.62))
     }
   })
@@ -171,6 +169,7 @@ function PostAdPage() {
     title: '',
     category: 'Shops',
     subcategory: 'Grocery',
+    customSubcategory: '',
     price: '',
     priceType: 'Fixed',
     location: '',
@@ -180,7 +179,6 @@ function PostAdPage() {
     whatsappNumber: '',
     pin: '',
     description: '',
-    // Bus Specific Fields
     from: 'Ilayangudi',
     to: '',
     departureTime: '',
@@ -189,11 +187,9 @@ function PostAdPage() {
   })
 
   const [sameAsPhone, setSameAsPhone] = useState(true)
-  const [images, setImages] = useState([]) // Up to 3 images
+  const [image, setImage] = useState('')
 
-  // Crop Queue for Multi-Image Crop
-  const [cropQueue, setCropQueue] = useState([])
-  const [currentCropIndex, setCurrentCropIndex] = useState(0)
+  const [rawImageSrc, setRawImageSrc] = useState(null)
   const [cropModalOpen, setCropModalOpen] = useState(false)
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
@@ -240,40 +236,22 @@ function PostAdPage() {
     setFormData((prev) => ({
       ...prev,
       category: nextCat,
-      subcategory: subList[0]?.key || 'Other'
+      subcategory: subList[0]?.key || 'Other',
+      customSubcategory: ''
     }))
   }
 
-  // Multi-Select (1 to 3 images) & Initiate Cropper Queue
-  const handleImagesSelect = (e) => {
+  const handleSingleImageSelect = (e) => {
     if (e.target.files && e.target.files.length > 0) {
       setError('')
-      const selectedFiles = Array.from(e.target.files)
-      const remainingSlots = 3 - images.length
-
-      if (remainingSlots <= 0) {
-        setError(isTamil ? 'அதிகபட்சம் 3 படங்கள் மட்டுமே சேர்க்க முடியும்' : 'Maximum 3 photos allowed')
-        e.target.value = null
-        return
-      }
-
-      const filesToProcess = selectedFiles.slice(0, remainingSlots)
-      const readers = filesToProcess.map((file) => {
-        return new Promise((resolve) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(reader.result)
-          reader.readAsDataURL(file)
-        })
-      })
-
-      Promise.all(readers).then((results) => {
-        setCropQueue(results)
-        setCurrentCropIndex(0)
+      const reader = new FileReader()
+      reader.onload = () => {
+        setRawImageSrc(reader.result)
         setCrop({ x: 0, y: 0 })
         setZoom(1)
         setCropModalOpen(true)
-      })
-
+      }
+      reader.readAsDataURL(e.target.files[0])
       e.target.value = null
     }
   }
@@ -284,21 +262,10 @@ function PostAdPage() {
 
   const handleSaveCroppedImage = async () => {
     try {
-      const activeSrc = cropQueue[currentCropIndex]
-      const croppedBase64 = await getCroppedImg(activeSrc, croppedAreaPixels)
-      
-      setImages((prev) => [...prev, croppedBase64])
-
-      // Next image in queue or close
-      if (currentCropIndex + 1 < cropQueue.length) {
-        setCurrentCropIndex((prev) => prev + 1)
-        setCrop({ x: 0, y: 0 })
-        setZoom(1)
-      } else {
-        setCropModalOpen(false)
-        setCropQueue([])
-        setCurrentCropIndex(0)
-      }
+      const croppedBase64 = await getCroppedImg(rawImageSrc, croppedAreaPixels)
+      setImage(croppedBase64)
+      setCropModalOpen(false)
+      setRawImageSrc(null)
     } catch {
       setError(isTamil ? 'படத்தை செதுக்குவதில் பிழை ஏற்பட்டது' : 'Error cropping image')
     }
@@ -306,12 +273,7 @@ function PostAdPage() {
 
   const handleCancelCrop = () => {
     setCropModalOpen(false)
-    setCropQueue([])
-    setCurrentCropIndex(0)
-  }
-
-  const handleRemoveImage = (indexToRemove) => {
-    setImages((prev) => prev.filter((_, idx) => idx !== indexToRemove))
+    setRawImageSrc(null)
   }
 
   const handleSubmit = async (e) => {
@@ -332,6 +294,9 @@ function PostAdPage() {
       if (!formData.phone.trim()) {
         return setError(isTamil ? 'தொலைபேசி எண்ணை உள்ளிடவும்' : 'Please enter phone number')
       }
+      if (formData.subcategory === 'Other' && !formData.customSubcategory.trim()) {
+        return setError(isTamil ? 'இதர உட்பிரிவு பெயரை உள்ளிடவும்' : 'Please specify other subcategory name')
+      }
     }
 
     if (!formData.pin.trim() || formData.pin.trim().length < 4) {
@@ -348,10 +313,14 @@ function PostAdPage() {
       ? `Bus Service: ${formData.from} to ${formData.to}. Departs at ${formData.departureTime}. Bus Type: ${formData.busType}. ${formData.routeVia ? `Route via: ${formData.routeVia}` : ''}`
       : formData.description.trim()
 
+    const finalSubcategory = isBus 
+      ? 'Bus Schedule'
+      : (formData.subcategory === 'Other' && formData.customSubcategory.trim() ? formData.customSubcategory.trim() : formData.subcategory)
+
     const payload = {
       title: busTitle,
       category: formData.category,
-      subcategory: formData.subcategory,
+      subcategory: finalSubcategory,
       price: isBus ? '' : formData.price.trim(),
       priceType: isBus ? 'Fixed' : formData.priceType,
       locality: 'Ilayangudi',
@@ -362,7 +331,7 @@ function PostAdPage() {
       whatsappNumber: isBus ? (formData.phone.trim() || '9104564265222') : (sameAsPhone ? formData.phone.trim() : (formData.whatsappNumber || formData.phone).trim()),
       pin: formData.pin.trim(),
       description: busDescription || 'Local Ilayangudi Listing',
-      images: images,
+      images: image ? [image] : [],
       from: formData.from,
       to: formData.to,
       departureTime: formData.departureTime,
@@ -370,17 +339,18 @@ function PostAdPage() {
       routeVia: formData.routeVia
     }
 
-    const API_BASE = window.location.hostname === 'localhost' ? '' : 'https://namma-ilayangudi.onrender.com'
+    // Direct Live Render Endpoint to prevent 404 Not Found
+    const API_URL = 'https://namma-ilayangudi.onrender.com/api/listings'
 
     try {
-      const res = await fetch(`${API_BASE}/api/listings`, {
+      const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
       const result = await res.json().catch(() => ({}))
 
-      if (res.ok && (result.success || result._id || result.listing)) {
+      if (res.ok && (result.success || result._id || result.listing || result.data)) {
         setSuccess(true)
         setTimeout(() => navigate('/'), 2000)
       } else {
@@ -432,7 +402,7 @@ function PostAdPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6 rounded-3xl bg-white p-6 text-slate-900 shadow-2xl sm:p-8">
           
-          {/* 1. AD TITLE / SHOP NAME * (FIRST FIELD) */}
+          {/* 1. AD TITLE / SHOP NAME * */}
           {!isBus && (
             <div>
               <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
@@ -467,25 +437,44 @@ function PostAdPage() {
             </select>
           </div>
 
-          {/* 3. SUBCATEGORY * */}
-          <div>
-            <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
-              SUBCATEGORY *
-            </label>
-            <select
-              value={formData.subcategory}
-              onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
-              className="mt-1.5 w-full rounded-2xl border border-slate-200 px-4 py-3.5 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
-            >
-              {currentSubcategories.map((sub) => (
-                <option key={sub.key} value={sub.key}>
-                  {sub.en}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* 3. SUBCATEGORY * (BUS TIMINGS-KKU MARAINDHU VIDUM) */}
+          {!isBus && (
+            <div>
+              <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
+                SUBCATEGORY *
+              </label>
+              <select
+                value={formData.subcategory}
+                onChange={(e) => setFormData({ ...formData, subcategory: e.target.value, customSubcategory: '' })}
+                className="mt-1.5 w-full rounded-2xl border border-slate-200 px-4 py-3.5 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+              >
+                {currentSubcategories.map((sub) => (
+                  <option key={sub.key} value={sub.key}>
+                    {sub.en}
+                  </option>
+                ))}
+              </select>
 
-          {/* IF BUS TIMINGS: SHOW BUS SPECIFIC SCHEDULE FORM */}
+              {/* Other manual input */}
+              {formData.subcategory === 'Other' && (
+                <div className="mt-2.5">
+                  <label className="block text-xs font-bold text-indigo-600">
+                    Specify Other Subcategory / Type your shop type *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Photo Studio, Tailoring, Gift Shop"
+                    value={formData.customSubcategory}
+                    onChange={(e) => setFormData({ ...formData, customSubcategory: e.target.value })}
+                    className="mt-1.5 w-full rounded-2xl border border-indigo-200 bg-indigo-50/40 px-4 py-3 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* IF BUS TIMINGS: SHOW BUS ROUTE & SCHEDULE DETAILS */}
           {isBus ? (
             <div className="space-y-4 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 sm:p-5">
               <div className="flex items-center gap-2 text-indigo-700 font-bold text-sm">
@@ -691,24 +680,19 @@ function PostAdPage() {
             </>
           )}
 
-          {/* 8. PHOTOS (1 TO 3 PHOTOS - MULTI-SELECT WITH CROP & KB COMPRESS) */}
+          {/* 8. SINGLE PHOTO (1 Image - 50-100 KB Auto Compress) */}
           <div>
-            <div className="flex items-center justify-between">
-              <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
-                PHOTOS (1 to 3 Images - 50-100 KB Auto Compress)
-              </label>
-              <span className="text-xs font-semibold text-slate-400">
-                {images.length}/3 Added
-              </span>
-            </div>
+            <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
+              PHOTO (1 Image - Auto Compressed 50-100 KB)
+            </label>
             
-            <div className="mt-2.5 flex flex-wrap gap-3">
-              {images.map((img, idx) => (
-                <div key={idx} className="relative h-24 w-28 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
-                  <img src={img} alt={`preview ${idx + 1}`} className="h-full w-full object-cover" />
+            <div className="mt-2.5">
+              {image ? (
+                <div className="relative h-28 w-36 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+                  <img src={image} alt="preview" className="h-full w-full object-cover" />
                   <button
                     type="button"
-                    onClick={() => handleRemoveImage(idx)}
+                    onClick={() => setImage('')}
                     className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-rose-600 text-white shadow hover:bg-rose-700 active:scale-95"
                   >
                     <X size={14} />
@@ -717,27 +701,20 @@ function PostAdPage() {
                     Optimized ✓
                   </span>
                 </div>
-              ))}
-
-              {/* Multi-Select Upload Button */}
-              {images.length < 3 && (
-                <label className="flex h-24 w-28 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-indigo-300 bg-indigo-50/60 text-indigo-600 transition hover:bg-indigo-100 active:scale-95">
+              ) : (
+                <label className="flex h-24 w-36 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-indigo-300 bg-indigo-50/60 text-indigo-600 transition hover:bg-indigo-100 active:scale-95">
                   <Plus size={22} />
-                  <span className="mt-1 text-xs font-bold text-center">Add Photos</span>
-                  <span className="text-[10px] text-slate-500">Pick 1 to 3</span>
+                  <span className="mt-1 text-xs font-bold">Add Photo</span>
+                  <span className="text-[10px] text-slate-500">Crop &amp; Compress</span>
                   <input 
                     type="file" 
-                    multiple 
                     accept="image/*" 
-                    onChange={handleImagesSelect} 
+                    onChange={handleSingleImageSelect} 
                     className="hidden" 
                   />
                 </label>
               )}
             </div>
-            <p className="mt-1.5 text-[11px] text-slate-400">
-              Orey click-la 1-3 photos select panni, crop panni 50KB-100KB-la add pannalaam.
-            </p>
           </div>
 
           {/* 9. SET A 4-DIGIT PIN * */}
@@ -775,14 +752,14 @@ function PostAdPage() {
         </form>
       </div>
 
-      {/* REACT-EASY-CROP MODAL (COMPRESS TO 50-100 KB) */}
-      {cropModalOpen && cropQueue.length > 0 && (
+      {/* SINGLE IMAGE CROP MODAL */}
+      {cropModalOpen && rawImageSrc && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black/95 p-4 backdrop-blur-md">
           <div className="flex items-center justify-between pb-3 text-white">
             <div>
               <h3 className="text-sm font-bold">Crop &amp; Optimize Photo</h3>
               <p className="text-xs text-indigo-300">
-                Photo {currentCropIndex + 1} of {cropQueue.length} (Auto compressed to ~50-100 KB)
+                Auto compressed to ~50-100 KB
               </p>
             </div>
             <button 
@@ -796,7 +773,7 @@ function PostAdPage() {
 
           <div className="relative flex-1 overflow-hidden rounded-2xl bg-black">
             <Cropper
-              image={cropQueue[currentCropIndex]}
+              image={rawImageSrc}
               crop={crop}
               zoom={zoom}
               aspect={4 / 3}
@@ -825,7 +802,7 @@ function PostAdPage() {
               onClick={handleSaveCroppedImage} 
               className="rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg transition hover:bg-indigo-700 active:scale-95"
             >
-              {currentCropIndex + 1 < cropQueue.length ? 'Crop & Next Photo →' : 'Done & Add to Post ✓'}
+              Done &amp; Add Photo ✓
             </button>
           </div>
         </div>
