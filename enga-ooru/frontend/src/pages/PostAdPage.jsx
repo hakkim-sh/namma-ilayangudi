@@ -187,9 +187,11 @@ function PostAdPage() {
   })
 
   const [sameAsPhone, setSameAsPhone] = useState(true)
-  const [image, setImage] = useState('')
+  const [images, setImages] = useState([]) // Up to 3 images
 
-  const [rawImageSrc, setRawImageSrc] = useState(null)
+  // Crop Queue for 1 to 3 images
+  const [cropQueue, setCropQueue] = useState([])
+  const [currentCropIndex, setCurrentCropIndex] = useState(0)
   const [cropModalOpen, setCropModalOpen] = useState(false)
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
@@ -241,17 +243,36 @@ function PostAdPage() {
     }))
   }
 
-  const handleSingleImageSelect = (e) => {
+  // 1 to 3 Multi Image Select
+  const handleImagesSelect = (e) => {
     if (e.target.files && e.target.files.length > 0) {
       setError('')
-      const reader = new FileReader()
-      reader.onload = () => {
-        setRawImageSrc(reader.result)
+      const selectedFiles = Array.from(e.target.files)
+      const remainingSlots = 3 - images.length
+
+      if (remainingSlots <= 0) {
+        setError(isTamil ? 'அதிகபட்சம் 3 படங்கள் மட்டுமே சேர்க்க முடியும்' : 'Maximum 3 photos allowed')
+        e.target.value = null
+        return
+      }
+
+      const filesToProcess = selectedFiles.slice(0, remainingSlots)
+      const readers = filesToProcess.map((file) => {
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result)
+          reader.readAsDataURL(file)
+        })
+      })
+
+      Promise.all(readers).then((results) => {
+        setCropQueue(results)
+        setCurrentCropIndex(0)
         setCrop({ x: 0, y: 0 })
         setZoom(1)
         setCropModalOpen(true)
-      }
-      reader.readAsDataURL(e.target.files[0])
+      })
+
       e.target.value = null
     }
   }
@@ -262,10 +283,19 @@ function PostAdPage() {
 
   const handleSaveCroppedImage = async () => {
     try {
-      const croppedBase64 = await getCroppedImg(rawImageSrc, croppedAreaPixels)
-      setImage(croppedBase64)
-      setCropModalOpen(false)
-      setRawImageSrc(null)
+      const activeSrc = cropQueue[currentCropIndex]
+      const croppedBase64 = await getCroppedImg(activeSrc, croppedAreaPixels)
+      setImages((prev) => [...prev, croppedBase64])
+
+      if (currentCropIndex + 1 < cropQueue.length) {
+        setCurrentCropIndex((prev) => prev + 1)
+        setCrop({ x: 0, y: 0 })
+        setZoom(1)
+      } else {
+        setCropModalOpen(false)
+        setCropQueue([])
+        setCurrentCropIndex(0)
+      }
     } catch {
       setError(isTamil ? 'படத்தை செதுக்குவதில் பிழை ஏற்பட்டது' : 'Error cropping image')
     }
@@ -273,7 +303,12 @@ function PostAdPage() {
 
   const handleCancelCrop = () => {
     setCropModalOpen(false)
-    setRawImageSrc(null)
+    setCropQueue([])
+    setCurrentCropIndex(0)
+  }
+
+  const handleRemoveImage = (indexToRemove) => {
+    setImages((prev) => prev.filter((_, idx) => idx !== indexToRemove))
   }
 
   const handleSubmit = async (e) => {
@@ -331,7 +366,7 @@ function PostAdPage() {
       whatsappNumber: isBus ? (formData.phone.trim() || '9104564265222') : (sameAsPhone ? formData.phone.trim() : (formData.whatsappNumber || formData.phone).trim()),
       pin: formData.pin.trim(),
       description: busDescription || 'Local Ilayangudi Listing',
-      images: image ? [image] : [],
+      images: images,
       from: formData.from,
       to: formData.to,
       departureTime: formData.departureTime,
@@ -339,7 +374,6 @@ function PostAdPage() {
       routeVia: formData.routeVia
     }
 
-    // Direct Live Render Endpoint to prevent 404 Not Found
     const API_URL = 'https://namma-ilayangudi.onrender.com/api/listings'
 
     try {
@@ -437,7 +471,7 @@ function PostAdPage() {
             </select>
           </div>
 
-          {/* 3. SUBCATEGORY * (BUS TIMINGS-KKU MARAINDHU VIDUM) */}
+          {/* 3. SUBCATEGORY * */}
           {!isBus && (
             <div>
               <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
@@ -455,7 +489,6 @@ function PostAdPage() {
                 ))}
               </select>
 
-              {/* Other manual input */}
               {formData.subcategory === 'Other' && (
                 <div className="mt-2.5">
                   <label className="block text-xs font-bold text-indigo-600">
@@ -474,7 +507,7 @@ function PostAdPage() {
             </div>
           )}
 
-          {/* IF BUS TIMINGS: SHOW BUS ROUTE & SCHEDULE DETAILS */}
+          {/* IF BUS TIMINGS */}
           {isBus ? (
             <div className="space-y-4 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 sm:p-5">
               <div className="flex items-center gap-2 text-indigo-700 font-bold text-sm">
@@ -482,7 +515,6 @@ function PostAdPage() {
                 <span>Bus Route &amp; Timings Details</span>
               </div>
 
-              {/* From & To */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase">
@@ -512,7 +544,6 @@ function PostAdPage() {
                 </div>
               </div>
 
-              {/* Departure Time & Bus Type */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase">
@@ -544,7 +575,6 @@ function PostAdPage() {
                 </div>
               </div>
 
-              {/* Route Via */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase">
                   Route Via (செல்லும் வழி - Optional)
@@ -592,7 +622,7 @@ function PostAdPage() {
                 </div>
               </div>
 
-              {/* 5. LOCATION / LANDMARK (OPTIONAL) */}
+              {/* 5. LOCATION & GPS */}
               <div>
                 <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
                   LOCATION / LANDMARK (OPTIONAL)
@@ -625,7 +655,7 @@ function PostAdPage() {
                 </div>
               </div>
 
-              {/* 6. PHONE NUMBER * */}
+              {/* 6. PHONE NUMBER */}
               <div>
                 <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
                   PHONE NUMBER *
@@ -663,7 +693,7 @@ function PostAdPage() {
                 )}
               </div>
 
-              {/* 7. DESCRIPTION * */}
+              {/* 7. DESCRIPTION */}
               <div>
                 <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
                   DESCRIPTION *
@@ -680,19 +710,24 @@ function PostAdPage() {
             </>
           )}
 
-          {/* 8. SINGLE PHOTO (1 Image - 50-100 KB Auto Compress) */}
+          {/* 8. PHOTOS (1 TO 3 IMAGES - MULTI SELECT & CROP) */}
           <div>
-            <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
-              PHOTO (1 Image - Auto Compressed 50-100 KB)
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
+                PHOTOS (1 to 3 Images - Auto Compressed 50-100 KB)
+              </label>
+              <span className="text-xs font-semibold text-slate-400">
+                {images.length}/3 Added
+              </span>
+            </div>
             
-            <div className="mt-2.5">
-              {image ? (
-                <div className="relative h-28 w-36 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
-                  <img src={image} alt="preview" className="h-full w-full object-cover" />
+            <div className="mt-2.5 flex flex-wrap gap-3">
+              {images.map((img, idx) => (
+                <div key={idx} className="relative h-24 w-28 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+                  <img src={img} alt={`preview ${idx + 1}`} className="h-full w-full object-cover" />
                   <button
                     type="button"
-                    onClick={() => setImage('')}
+                    onClick={() => handleRemoveImage(idx)}
                     className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-rose-600 text-white shadow hover:bg-rose-700 active:scale-95"
                   >
                     <X size={14} />
@@ -701,15 +736,18 @@ function PostAdPage() {
                     Optimized ✓
                   </span>
                 </div>
-              ) : (
-                <label className="flex h-24 w-36 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-indigo-300 bg-indigo-50/60 text-indigo-600 transition hover:bg-indigo-100 active:scale-95">
+              ))}
+
+              {images.length < 3 && (
+                <label className="flex h-24 w-28 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-indigo-300 bg-indigo-50/60 text-indigo-600 transition hover:bg-indigo-100 active:scale-95">
                   <Plus size={22} />
                   <span className="mt-1 text-xs font-bold">Add Photo</span>
-                  <span className="text-[10px] text-slate-500">Crop &amp; Compress</span>
+                  <span className="text-[10px] text-slate-500">Pick 1 to 3</span>
                   <input 
                     type="file" 
+                    multiple 
                     accept="image/*" 
-                    onChange={handleSingleImageSelect} 
+                    onChange={handleImagesSelect} 
                     className="hidden" 
                   />
                 </label>
@@ -717,7 +755,7 @@ function PostAdPage() {
             </div>
           </div>
 
-          {/* 9. SET A 4-DIGIT PIN * */}
+          {/* 9. SET A 4-DIGIT PIN */}
           <div>
             <label className="block text-xs font-bold tracking-wide text-slate-700 uppercase">
               SET A 4-DIGIT PIN (TO EDIT OR DELETE LATER) *
@@ -752,14 +790,14 @@ function PostAdPage() {
         </form>
       </div>
 
-      {/* SINGLE IMAGE CROP MODAL */}
-      {cropModalOpen && rawImageSrc && (
+      {/* CROPPER MODAL */}
+      {cropModalOpen && cropQueue.length > 0 && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black/95 p-4 backdrop-blur-md">
           <div className="flex items-center justify-between pb-3 text-white">
             <div>
               <h3 className="text-sm font-bold">Crop &amp; Optimize Photo</h3>
               <p className="text-xs text-indigo-300">
-                Auto compressed to ~50-100 KB
+                Photo {currentCropIndex + 1} of {cropQueue.length} (Auto compressed to ~50-100 KB)
               </p>
             </div>
             <button 
@@ -773,7 +811,7 @@ function PostAdPage() {
 
           <div className="relative flex-1 overflow-hidden rounded-2xl bg-black">
             <Cropper
-              image={rawImageSrc}
+              image={cropQueue[currentCropIndex]}
               crop={crop}
               zoom={zoom}
               aspect={4 / 3}
@@ -802,7 +840,7 @@ function PostAdPage() {
               onClick={handleSaveCroppedImage} 
               className="rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg transition hover:bg-indigo-700 active:scale-95"
             >
-              Done &amp; Add Photo ✓
+              {currentCropIndex + 1 < cropQueue.length ? 'Crop & Next Photo →' : 'Done & Add to Post ✓'}
             </button>
           </div>
         </div>

@@ -98,7 +98,7 @@ function HomePage() {
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-200">{t('explore')}</p>
               <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                {t('explore')} <span className="text-indigo-200">{t('nearby')}</span>
+                {t('explore')} 
               </h2>
             </div>
             <SlidersHorizontal className="hidden text-indigo-200 sm:block" size={22} aria-hidden="true" />
