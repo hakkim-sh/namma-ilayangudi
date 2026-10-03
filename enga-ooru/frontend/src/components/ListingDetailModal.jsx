@@ -20,23 +20,35 @@ function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
     return Boolean(localStorage.getItem(storageRatingKey))
   })
   const [currentRating, setCurrentRating] = useState(() => {
-    return listing.rating || 5.0
+    return listing.averageRating || listing.rating || 5.0
   })
 
   const handleRate = async (starValue) => {
     setUserRating(starValue)
     setRatingSubmitted(true)
     localStorage.setItem(storageRatingKey, String(starValue))
-    setCurrentRating(starValue.toFixed(1))
 
-    const apiBase = window.location.hostname === 'localhost' ? '' : 'https://namma-ilayangudi.onrender.com'
+    const apiBase = 'https://namma-ilayangudi.onrender.com'
     try {
-      await fetch(`${apiBase}/api/listings/${targetId}/rate`, {
+      const response = await fetch(`${apiBase}/api/listings/${targetId}/rate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rating: starValue })
-      }).catch(() => {})
-    } catch (_) {}
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result?.data?.averageRating) {
+          setCurrentRating(result.data.averageRating)
+        } else {
+          setCurrentRating(starValue.toFixed(1))
+        }
+      } else {
+        setCurrentRating(starValue.toFixed(1))
+      }
+    } catch (_) {
+      setCurrentRating(starValue.toFixed(1))
+    }
   }
 
   // 1. WHATSAPP COUNTRY CODE (+91) FORMAT FIX
@@ -59,7 +71,7 @@ function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
   const closeAuthModal = () => setAuthModal({ isOpen: false, action: null, pin: '', error: '' })
 
   // 2. DYNAMIC API BASE URL FOR LOCAL & RENDER PRODUCTION DELETE
- const getApiBase = () => {
+  const getApiBase = () => {
     return 'https://namma-ilayangudi.onrender.com'
   }
 
