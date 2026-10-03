@@ -1,4 +1,4 @@
-\import { useState } from 'react'
+import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Edit3, LockKeyhole, MapPin, MessageCircle, Phone, ShieldCheck, Navigation, X, Star } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
 
