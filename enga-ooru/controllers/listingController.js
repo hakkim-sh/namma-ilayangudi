@@ -33,7 +33,6 @@ const verifyAccess = async (req, listing) => {
   return false;
 };
 
-
 // GET approved listings
 const getApprovedListings = async (req, res, next) => {
   try {
@@ -150,7 +149,6 @@ const updateListing = async (req, res, next) => {
 };
 
 // DELETE listing (Strict Admin Master Key or Owner PIN)
-// DELETE listing (Strict Admin Master Key or Owner PIN)
 const deleteListing = async (req, res, next) => {
   try {
     console.log('--- DELETE REQUEST RECEIVED ---');
@@ -198,6 +196,58 @@ const deleteListing = async (req, res, next) => {
   }
 };
 
+// RATE listing (Pudhiya Rating Logic)
+const rateListing = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { rating } = req.body;
+    const numericRating = Number(rating);
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ success: false, message: 'Invalid listing ID' });
+    }
+
+    if (!numericRating || numericRating < 1 || numericRating > 5) {
+      return res.status(400).json({ success: false, message: 'Rating must be between 1 and 5' });
+    }
+
+    const listing = await Listing.findById(id);
+    if (!listing) {
+      return res.status(404).json({ success: false, message: 'Listing not found' });
+    }
+
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+
+    if (!listing.ratings) {
+      listing.ratings = [];
+    }
+
+    const existingIndex = listing.ratings.findIndex(r => r.userIp === clientIp);
+    if (existingIndex > -1) {
+      listing.ratings[existingIndex].rating = numericRating;
+    } else {
+      listing.ratings.push({ userIp: clientIp, rating: numericRating });
+    }
+
+    const total = listing.ratings.reduce((acc, curr) => acc + curr.rating, 0);
+    listing.totalRatings = listing.ratings.length;
+    listing.averageRating = Number((total / listing.totalRatings).toFixed(1));
+
+    await listing.save();
+
+    res.json({
+      success: true,
+      message: 'Rating submitted successfully',
+      data: {
+        averageRating: listing.averageRating,
+        totalRatings: listing.totalRatings
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getApprovedListings,
   getListingById,
@@ -205,5 +255,6 @@ module.exports = {
   getPendingListings,
   approveListing,
   deleteListing,
-  updateListing
+  updateListing,
+  rateListing
 };

@@ -20,13 +20,15 @@ function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
     return Boolean(localStorage.getItem(storageRatingKey))
   })
   const [currentRating, setCurrentRating] = useState(() => {
-    return listing.averageRating || listing.rating || 5.0
+    const savedUserRating = Number(localStorage.getItem(storageRatingKey))
+    return savedUserRating ? savedUserRating.toFixed(1) : (listing.averageRating || listing.rating || 5.0)
   })
 
   const handleRate = async (starValue) => {
     setUserRating(starValue)
     setRatingSubmitted(true)
     localStorage.setItem(storageRatingKey, String(starValue))
+    setCurrentRating(starValue.toFixed(1))
 
     const apiBase = 'https://namma-ilayangudi.onrender.com'
     try {
@@ -39,15 +41,11 @@ function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
       if (response.ok) {
         const result = await response.json()
         if (result?.data?.averageRating) {
-          setCurrentRating(result.data.averageRating)
-        } else {
-          setCurrentRating(starValue.toFixed(1))
+          setCurrentRating(Number(result.data.averageRating).toFixed(1))
         }
-      } else {
-        setCurrentRating(starValue.toFixed(1))
       }
-    } catch (_) {
-      setCurrentRating(starValue.toFixed(1))
+    } catch (err) {
+      console.error('Rating update error:', err)
     }
   }
 
@@ -216,48 +214,41 @@ function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
               </p>
 
               {/* Display Overall Rating */}
-              <div className="flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
-                <Star size={12} className="fill-amber-400 text-amber-400" />
-                <span>{currentRating}</span>
-              </div>
+            <div className="flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
+              <Star size={12} className="fill-amber-400 text-amber-400" />
+              <span>{currentRating}</span>
             </div>
+          </div>
 
-            <h2 className="mt-2 text-xl font-bold text-slate-900">{listing.title}</h2>
+          <h2 className="mt-2 text-xl font-bold text-slate-900">{listing.title}</h2>
 
-            {/* User Star Rating Box */}
-            <div className="mt-3.5 flex items-center justify-between rounded-2xl border border-amber-100 bg-amber-50/60 p-3.5">
-              <div>
-                <p className="text-xs font-bold text-slate-800">
-                  {ratingSubmitted ? 'உங்கள் மதிப்பீடு (Your Rating):' : 'ரேட்டிங் கொடுக்கவும் (Rate this):'}
-                </p>
-                <p className="text-[11px] text-slate-500">
-                  {ratingSubmitted ? 'நன்றி! பதிவு செய்யப்பட்டது ✓' : 'நட்சத்திரத்தை தொட்டு ரேட் செய்யவும்'}
-                </p>
-              </div>
+          {/* Simple Clean Rating Box (No Tamil Text) */}
+          <div className="mt-3 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2.5">
+            <span className="text-xs font-semibold text-slate-600">
+              {ratingSubmitted ? 'Rated ✓' : 'Rate:'}
+            </span>
 
-              {/* 5 Interactive Stars */}
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((star) => {
-                  const filled = hoverRating ? star <= hoverRating : star <= userRating
-                  return (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => handleRate(star)}
-                      onMouseEnter={() => setHoverRating(star)}
-                      onMouseLeave={() => setHoverRating(0)}
-                      className="p-1 transition-transform hover:scale-125 focus:outline-none"
-                    >
-                      <Star
-                        size={20}
-                        className={filled ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}
-                      />
-                    </button>
-                  )
-                })}
-              </div>
+            <div className="flex items-center gap-1.5">
+              {[1, 2, 3, 4, 5].map((star) => {
+                const filled = hoverRating ? star <= hoverRating : star <= userRating
+                return (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => handleRate(star)}
+                    onMouseEnter={() => setHoverRating(star)}
+                    onMouseLeave={() => setHoverRating(0)}
+                    className="p-0.5 transition-transform hover:scale-125 focus:outline-none"
+                  >
+                    <Star
+                      size={18}
+                      className={filled ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}
+                    />
+                  </button>
+                )
+              })}
             </div>
-
+          </div>
             {/* Location + Google Maps Live Route Action */}
             <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3.5">
               <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600">

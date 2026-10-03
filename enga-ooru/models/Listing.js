@@ -22,6 +22,18 @@ const listingSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
   ownerEmail: { type: String, lowercase: true, trim: true, index: true },
   pin: { type: String, required: true, match: [/^\d{4}$/, 'PIN must contain exactly 4 digits'] },
+  
+  // Rating fields
+  ratings: [
+    {
+      userIp: { type: String }, // User login illaama irundhaa IP vachu track panna
+      rating: { type: Number, required: true, min: 1, max: 5 },
+      createdAt: { type: Date, default: Date.now }
+    }
+  ],
+  averageRating: { type: Number, default: 0 },
+  totalRatings: { type: Number, default: 0 },
+
   createdAt: { type: Date, default: Date.now },
 });
 

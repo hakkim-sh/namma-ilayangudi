@@ -7,6 +7,7 @@ const {
   approveListing,
   deleteListing,
   updateListing,
+  rateListing,
 } = require('../controllers/listingController');
 
 const router = express.Router();
@@ -20,5 +21,8 @@ router.get('/admin/pending', getPendingListings);
 router.put('/admin/approve/:id', approveListing);
 router.delete('/admin/:id', deleteListing);
 router.get('/:id', getListingById);
+
+// Pudhiya Rating Endpoint
+router.post('/:id/rate', rateListing);
 
 module.exports = router;
