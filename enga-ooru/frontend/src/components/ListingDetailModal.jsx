@@ -1,4 +1,4 @@
-import { useState } from 'react'
+\import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Edit3, LockKeyhole, MapPin, MessageCircle, Phone, ShieldCheck, Navigation, X, Star } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
 
@@ -12,23 +12,33 @@ function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
   // User Interactive Rating States
   const targetId = listing._id || listing.id
   const storageRatingKey = `rated_${targetId}`
+
+  // 1. Double rating thadukka browser check
+  const [ratingSubmitted, setRatingSubmitted] = useState(() => {
+    return Boolean(localStorage.getItem(storageRatingKey))
+  })
+
+  // 2. Database-la irundhu vara Global Overall Rating (Ellarukkum theriyum)
+  const [currentRating, setCurrentRating] = useState(() => {
+    return listing.averageRating || listing.rating || 5.0
+  })
+
+  const [totalVotes, setTotalVotes] = useState(() => {
+    return listing.totalRatings || 0
+  })
+
   const [userRating, setUserRating] = useState(() => {
     return Number(localStorage.getItem(storageRatingKey)) || 0
   })
   const [hoverRating, setHoverRating] = useState(0)
-  const [ratingSubmitted, setRatingSubmitted] = useState(() => {
-    return Boolean(localStorage.getItem(storageRatingKey))
-  })
-  const [currentRating, setCurrentRating] = useState(() => {
-    const savedUserRating = Number(localStorage.getItem(storageRatingKey))
-    return savedUserRating ? savedUserRating.toFixed(1) : (listing.averageRating || listing.rating || 5.0)
-  })
 
+  // 3. Flipkart maadhiri backend-la save panni global average edukkum
   const handleRate = async (starValue) => {
+    if (ratingSubmitted) return
+
     setUserRating(starValue)
     setRatingSubmitted(true)
     localStorage.setItem(storageRatingKey, String(starValue))
-    setCurrentRating(starValue.toFixed(1))
 
     const apiBase = 'https://namma-ilayangudi.onrender.com'
     try {
@@ -40,8 +50,11 @@ function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
 
       if (response.ok) {
         const result = await response.json()
-        if (result?.data?.averageRating) {
-          setCurrentRating(Number(result.data.averageRating).toFixed(1))
+        if (result?.data) {
+          setCurrentRating(result.data.averageRating)
+          if (result.data.totalRatings) {
+            setTotalVotes(result.data.totalRatings)
+          }
         }
       }
     } catch (err) {
@@ -213,42 +226,47 @@ function ListingDetailModal({ listing, imagePlaceholder, onClose, onEdit }) {
                 {categoryLabel(listing.category)} • {listing.subcategory ? subcategoryLabel(listing.subcategory) : t('localListing')}
               </p>
 
-              {/* Display Overall Rating */}
-            <div className="flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
-              <Star size={12} className="fill-amber-400 text-amber-400" />
-              <span>{currentRating}</span>
+              {/* Display Overall Global Rating (Flipkart Style) */}
+              <div className="flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
+                <Star size={12} className="fill-amber-400 text-amber-400" />
+                <span>{Number(currentRating).toFixed(1)}</span>
+                {totalVotes > 0 && (
+                  <span className="text-[10px] text-amber-600/70">({totalVotes})</span>
+                )}
+              </div>
             </div>
-          </div>
 
-          <h2 className="mt-2 text-xl font-bold text-slate-900">{listing.title}</h2>
+            <h2 className="mt-2 text-xl font-bold text-slate-900">{listing.title}</h2>
 
-          {/* Simple Clean Rating Box (No Tamil Text) */}
-          <div className="mt-3 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2.5">
-            <span className="text-xs font-semibold text-slate-600">
-              {ratingSubmitted ? 'Rated ✓' : 'Rate:'}
-            </span>
+            {/* Simple Clean Rating Box (No Tamil Text) */}
+            <div className="mt-3 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2.5">
+              <span className="text-xs font-semibold text-slate-600">
+                {ratingSubmitted ? 'Rated ✓' : 'Rate:'}
+              </span>
 
-            <div className="flex items-center gap-1.5">
-              {[1, 2, 3, 4, 5].map((star) => {
-                const filled = hoverRating ? star <= hoverRating : star <= userRating
-                return (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => handleRate(star)}
-                    onMouseEnter={() => setHoverRating(star)}
-                    onMouseLeave={() => setHoverRating(0)}
-                    className="p-0.5 transition-transform hover:scale-125 focus:outline-none"
-                  >
-                    <Star
-                      size={18}
-                      className={filled ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}
-                    />
-                  </button>
-                )
-              })}
+              <div className="flex items-center gap-1.5">
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const filled = hoverRating ? star <= hoverRating : star <= userRating
+                  return (
+                    <button
+                      key={star}
+                      type="button"
+                      disabled={ratingSubmitted}
+                      onClick={() => handleRate(star)}
+                      onMouseEnter={() => !ratingSubmitted && setHoverRating(star)}
+                      onMouseLeave={() => !ratingSubmitted && setHoverRating(0)}
+                      className={`p-0.5 transition-transform focus:outline-none ${ratingSubmitted ? 'cursor-default opacity-80' : 'hover:scale-125'}`}
+                    >
+                      <Star
+                        size={18}
+                        className={filled ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}
+                      />
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          </div>
+
             {/* Location + Google Maps Live Route Action */}
             <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3.5">
               <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
