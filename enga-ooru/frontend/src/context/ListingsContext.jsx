@@ -5,49 +5,96 @@ const API_BASE = 'https://namma-ilayangudi.onrender.com'
 const API_URL = `${API_BASE}/api/listings`
 const imagePlaceholder = 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=800&q=80'
 
-const sampleListings = [
-  { id: 1, title: 'Bright 2BHK near the main market', category: 'Property', subcategory: 'House Rent', price: 14000, priceType: 'Monthly', locality: 'Sivagangai Road, Ilayangudi', image: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=900&q=80', whatsappNumber: '919876543210', description: 'A bright, airy home with easy access to shops and schools.', postedAt: 'Sample listing' },
-  { id: 2, title: 'Trusted electrician for home repairs', category: 'Services', subcategory: 'Electrician', price: 'Price on Discussion', priceType: 'Discussion', locality: 'Nehru Bazaar, Ilayangudi', image: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=900&q=80', whatsappNumber: '919876543211', description: 'Quick and reliable electrical work for homes and small businesses.', postedAt: 'Sample listing' },
-]
-
 const ListingsContext = createContext(null)
-const normalizeListing = (listing) => ({ ...listing, locality: listing.locality || listing.location, location: listing.location || listing.locality, phone: listing.phone || listing.whatsappNumber || listing.whatsapp, whatsapp: listing.whatsappNumber || listing.whatsapp || listing.phone, image: listing.images?.[0] || listing.image || imagePlaceholder })
+const normalizeListing = (listing) => ({
+  ...listing,
+  locality: listing.locality || listing.location,
+  location: listing.location || listing.locality,
+  phone: listing.phone || listing.whatsappNumber || listing.whatsapp,
+  whatsapp: listing.whatsappNumber || listing.whatsapp || listing.phone,
+  image: listing.images?.[0] || listing.image || imagePlaceholder
+})
 
 function readCache() {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY)
-    return stored ? JSON.parse(stored).map(normalizeListing) : sampleListings
+    return stored ? JSON.parse(stored).map(normalizeListing) : []
   } catch {
-    return sampleListings
+    return []
   }
 }
 
 export function ListingsProvider({ children }) {
   const [listings, setListings] = useState(readCache)
+  // Cache-la data irundhaa loading false, illana true
+  const [loading, setLoading] = useState(() => readCache().length === 0)
 
   useEffect(() => {
     let active = true
-    fetch(API_URL).then((response) => { if (!response.ok) throw new Error('Listings request failed'); return response.json() }).then((payload) => {
-      if (!active || !Array.isArray(payload.data)) return
-      const remoteListings = payload.data.map(normalizeListing)
-      setListings(remoteListings)
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteListings))
-    }).catch(() => { /* Cached listings keep the home feed usable while the API is unavailable. */ })
-    return () => { active = false }
+    fetch(API_URL)
+      .then((response) => {
+        if (!response.ok) throw new Error('Listings request failed')
+        return response.json()
+      })
+      .then((payload) => {
+        if (!active || !Array.isArray(payload.data)) return
+        const remoteListings = payload.data.map(normalizeListing)
+        setListings(remoteListings)
+        setLoading(false)
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteListings))
+      })
+      .catch(() => {
+        setLoading(false)
+      })
+    return () => {
+      active = false
+    }
   }, [])
 
   const addListing = useCallback(async (listing) => {
     const phone = listing.phone || listing.whatsappNumber || listing.whatsapp
-      const response = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: listing.title, category: listing.category, subcategory: listing.subcategory, price: listing.price, priceType: listing.priceType, locality: listing.locality || listing.location, location: listing.location, phone, whatsappNumber: listing.whatsappNumber || listing.whatsapp || phone, description: listing.description, images: listing.images || [listing.image], from: listing.from, to: listing.to, departureTime: listing.departureTime, busType: listing.busType, routeVia: listing.routeVia, ownerEmail: listing.ownerEmail, userId: listing.userId, pin: listing.pin }) })
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: listing.title,
+        category: listing.category,
+        subcategory: listing.subcategory,
+        price: listing.price,
+        priceType: listing.priceType,
+        locality: listing.locality || listing.location,
+        location: listing.location,
+        phone,
+        whatsappNumber: listing.whatsappNumber || listing.whatsapp || phone,
+        description: listing.description,
+        images: listing.images || [listing.image],
+        from: listing.from,
+        to: listing.to,
+        departureTime: listing.departureTime,
+        busType: listing.busType,
+        routeVia: listing.routeVia,
+        ownerEmail: listing.ownerEmail,
+        userId: listing.userId,
+        pin: listing.pin
+      })
+    })
     if (!response.ok) throw new Error('Unable to save listing')
     const payload = await response.json()
     const saved = normalizeListing(payload.data)
-    setListings((current) => { const updated = [saved, ...current]; window.localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); return updated })
+    setListings((current) => {
+      const updated = [saved, ...current]
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+      return updated
+    })
     return saved
   }, [])
 
   const deleteListing = useCallback(async (id, managementKey) => {
-    const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: managementKey, adminKey: managementKey }) })
+    const response = await fetch(`${API_URL}/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: managementKey, adminKey: managementKey })
+    })
     const payload = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(payload.message || 'Unable to delete listing')
     setListings((current) => {
@@ -59,7 +106,11 @@ export function ListingsProvider({ children }) {
   }, [])
 
   const updateListing = useCallback(async (id, updatedData, managementKey) => {
-    const response = await fetch(`${API_URL}/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...updatedData, pin: managementKey, adminKey: managementKey }) })
+    const response = await fetch(`${API_URL}/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...updatedData, pin: managementKey, adminKey: managementKey })
+    })
     const payload = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(payload.message || 'Unable to update listing')
     const updatedListing = normalizeListing(payload.data)
@@ -71,7 +122,10 @@ export function ListingsProvider({ children }) {
     return updatedListing
   }, [])
 
-  const value = useMemo(() => ({ listings, addListing, deleteListing, updateListing, imagePlaceholder }), [listings, addListing, deleteListing, updateListing])
+  const value = useMemo(
+    () => ({ listings, loading, addListing, deleteListing, updateListing, imagePlaceholder }),
+    [listings, loading, addListing, deleteListing, updateListing]
+  )
   return <ListingsContext.Provider value={value}>{children}</ListingsContext.Provider>
 }
 
